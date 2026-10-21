@@ -22,9 +22,9 @@ Peak positions are grid maxima (resolution 0.02) from a single run. Peak heights
 | 2.26 | 0.6403 | -1.4433 |
 | 3.8 | 0.0137 | -0.5938 |
 
-![phase transitions](phase_transitions.png)
+![phase transitions](docs/images/phase_transitions.png)
 
-![domain snapshots](domain_snapshots.png)
+![domain snapshots](docs/images/domain_snapshots.png)
 
 ## Finite-size scaling and error analysis
 
@@ -41,7 +41,7 @@ U₄ = 1 − ⟨M⁴⟩ / (3⟨M²⟩²) tends to 2/3 in the ordered phase and t
 
 Onsager T_c = 2.2692. Both crossings lie at or slightly below T_c, spanning 2.257–2.268. The larger-N pair is noisier: near T_c the N=128 chains contain only a few dozen independent samples (see below), and the crossing is a linear interpolation between 0.005-spaced points whose U₄ error bars overlap. Scatter of this size (≈ 0.01 in T) is therefore expected and no systematic shift is claimed.
 
-![Binder cumulants](binder_cumulants.png)
+![Binder cumulants](docs/images/binder_cumulants.png)
 
 ### Critical slowing down
 
@@ -73,7 +73,7 @@ Errors grow with N at fixed sweep count because τ_int grows faster than the num
 
 Rescaling χ → χ N^(−γ/ν) and T → (T − T_c) N^(1/ν) with the exact 2D Ising exponents γ = 1.75, ν = 1.0 and the exact T_c collapses all sizes onto one curve:
 
-![Susceptibility collapse](fss_data_collapse.png)
+![Susceptibility collapse](docs/images/fss_data_collapse.png)
 
 | N | χ_max N^(−γ/ν) | T at χ_max |
 |---|---|---|
@@ -96,7 +96,7 @@ Integrated autocorrelation time of |M| at T = 2.269 (≈ T_c), Sokal window. Met
 
 Fitted exponents τ ∝ N^z: Metropolis z = 1.92; Wolff z = 0.35 in cluster updates (0.10 in sweep-equivalents, where the growing cluster fraction is included). At N = 128 the Wolff chain decorrelates in 5.2 updates against 536 Metropolis sweeps.
 
-![Critical slowing down](critical_slowing_down.png)
+![Critical slowing down](docs/images/critical_slowing_down.png)
 
 Caveats: the comparison is in spin visits, not wall-clock time (Metropolis runs on the GPU, Wolff in single-threaded Python). Wolff has no Z₂-symmetry-breaking trouble at h = 0 and does not apply directly with a field (a Metropolis test on the field energy is added). Exponent fits use only 4 sizes and carry corresponding uncertainty.
 
@@ -144,7 +144,7 @@ Hardware: NVIDIA GeForce RTX 2060 SUPER (8 GB, compute capability 7.5), torch wi
 | Peak raw engine throughput (benchmark, large batch) | 1.29e+09 spin-updates/s |
 | CPU baseline, one 128×128 sweep (measured) | 49 ms |
 | CPU estimate for the production workload (extrapolated) | 26.9 h |
-| Speedup on the production workload | ≈ 2,864× |
+| Speedup on the production workload | ≈ 2,862× |
 | Speedup, raw engine throughput (best-case batches) | 4,472–4,627× |
 
 The production run is slower than the raw engine rate because it measures M and E after every sweep (extra kernels per sweep). Speedups compare against the pure-Python CPU baseline and are extrapolated from short CPU timings; they do not compare against an optimized (e.g. C/numba, multispin-coded) CPU implementation.
@@ -162,7 +162,7 @@ Float32 temporaries (random numbers, ΔE, Boltzmann factors) are built per chunk
 
 ## Benchmark comparison: CPU single-spin vs GPU checkerboard
 
-From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see that file for the full N × B throughput grid and `benchmark_results.png`).
+From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see that file for the full N × B throughput grid and `docs/images/benchmark_results.png`).
 
 ### CPU vs GPU: 1000 sweeps, single lattice (B=1)
 

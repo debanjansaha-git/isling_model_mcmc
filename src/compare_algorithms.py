@@ -19,7 +19,7 @@ from src.wolff_ising import WolffIsing2D
 T_CRIT = 2.269
 SIZES = (16, 32, 64, 128)
 OUTPUT_JSON = "data/compare_algorithms.json"
-OUTPUT_PNG = "critical_slowing_down.png"
+OUTPUT_PNG = "docs/images/critical_slowing_down.png"
 
 
 def metropolis_tau(N: int, chains: int, therm: int, meas: int, seed: int) -> tuple[float, float]:

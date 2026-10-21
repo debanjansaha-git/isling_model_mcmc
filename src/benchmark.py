@@ -86,7 +86,7 @@ def main() -> None:
 
     write_report(gpu_name, cpu, grid, gpu_1000)
     write_chart(cpu, grid)
-    print("Wrote BENCHMARK_REPORT.md and benchmark_results.png")
+    print("Wrote BENCHMARK_REPORT.md and docs/images/benchmark_results.png")
 
 
 def write_report(
@@ -157,7 +157,7 @@ def write_chart(
     ax.grid(True, which="both", alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    fig.savefig("benchmark_results.png", dpi=150)
+    fig.savefig("docs/images/benchmark_results.png", dpi=150)
 
 
 if __name__ == "__main__":

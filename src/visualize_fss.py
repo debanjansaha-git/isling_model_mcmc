@@ -13,7 +13,7 @@ GAMMA, NU = 1.75, 1.0  # exact 2D Ising exponents
 COLORS = {32: "tab:blue", 64: "tab:orange", 128: "tab:green"}
 
 
-def plot_binder_cumulants(data: dict, out: str = "binder_cumulants.png") -> None:
+def plot_binder_cumulants(data: dict, out: str = "docs/images/binder_cumulants.png") -> None:
     fig, ax = plt.subplots(figsize=(7, 5))
     for N, r in sorted(data["results"].items()):
         ax.errorbar(r["T"], r["binder"], yerr=r["binder_err"], fmt="o-", ms=3, lw=1,
@@ -29,7 +29,7 @@ def plot_binder_cumulants(data: dict, out: str = "binder_cumulants.png") -> None
     plt.close(fig)
 
 
-def plot_data_collapse(data: dict, out: str = "fss_data_collapse.png") -> None:
+def plot_data_collapse(data: dict, out: str = "docs/images/fss_data_collapse.png") -> None:
     fig, ax = plt.subplots(figsize=(7, 5))
     for N, r in sorted(data["results"].items()):
         x = (r["T"] - T_C) * N ** (1 / NU)
@@ -50,7 +50,7 @@ def main() -> None:
     data = load_fss_hdf5(DATA_PATH)
     plot_binder_cumulants(data)
     plot_data_collapse(data)
-    print("wrote binder_cumulants.png and fss_data_collapse.png")
+    print("wrote docs/images/binder_cumulants.png and docs/images/fss_data_collapse.png")
 
 
 if __name__ == "__main__":

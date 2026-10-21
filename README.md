@@ -2,11 +2,15 @@
 
 ## Live interactive simulation
 
-**[https://debanjansaha-git.github.io/isling_model_mcmc/](https://debanjansaha-git.github.io/isling_model_mcmc/)** — a single-file, dependency-free browser simulator
-(`docs/index.html`): real-time spin canvas, temperature / field / speed sliders, Metropolis
-or Wolff cluster updates, live |M| and E plots, and presets for the frozen, critical and
-disordered regimes. Pages for the `docs/` folder (Settings → Pages → Deploy from branch → `/docs`).
-Open `docs/index.html` directly in a browser to run it locally.
+<p align="center">
+  <a href="https://debanjansaha-git.github.io/isling_model_mcmc/">
+    <img src="docs/images/simulator_preview.png" alt="Preview of the interactive 2D Ising simulator" width="900">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://debanjansaha-git.github.io/isling_model_mcmc/"><b>▶ Launch the live simulator</b></a>
+</p>
 
 ## Executive summary
 
@@ -30,7 +34,7 @@ correctness reference and the performance baseline.
 | Workload | GPU speedup |
 |---|---|
 | Raw engine, large batches | 4,472–4,627× |
-| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,864× |
+| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,862× |
 
 The baseline is unoptimized Python; the speedup is not a comparison with tuned CPU code.
 CPU times are extrapolated from short runs.
@@ -64,17 +68,17 @@ Fitted τ ∝ N^z: Metropolis z = 1.92, Wolff z = 0.35 (per update). Single-spin
 
 ## Visualizations
 
-![Phase transition observables](phase_transitions.png)
+![Phase transition observables](docs/images/phase_transitions.png)
 
-![Domain snapshots at T = 1.2, 2.26, 3.8](domain_snapshots.png)
+![Domain snapshots at T = 1.2, 2.26, 3.8](docs/images/domain_snapshots.png)
 
-![Binder cumulant crossings](binder_cumulants.png)
+![Binder cumulant crossings](docs/images/binder_cumulants.png)
 
-![Susceptibility data collapse](fss_data_collapse.png)
+![Susceptibility data collapse](docs/images/fss_data_collapse.png)
 
-![Benchmark: CPU vs GPU](benchmark_results.png)
+![Benchmark: CPU vs GPU](docs/images/benchmark_results.png)
 
-![Critical slowing down: Metropolis vs Wolff](critical_slowing_down.png)
+![Critical slowing down: Metropolis vs Wolff](docs/images/critical_slowing_down.png)
 
 ## Physics & methodology
 
@@ -127,7 +131,7 @@ uv run python -m src.fss                   # FSS dataset -> data/fss_analysis.h5
 uv run python -m src.visualize             # sweep figures
 uv run python -m src.visualize_fss         # Binder + collapse figures
 uv run python -m src.wolff_ising           # Wolff cluster demo
-uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> critical_slowing_down.png
+uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> docs/images/critical_slowing_down.png
 uv run python -m src.parallel_tempering    # replica exchange demo -> data/pt_demo.json
 uv run python -m src.report                # regenerate SIMULATION_REPORT.md and README.md
 ```

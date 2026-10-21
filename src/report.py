@@ -125,7 +125,7 @@ def _fss_markdown(fss: dict, meas: int, n_blocks: int) -> list[str]:
           "independent samples (see below), and the crossing is a linear interpolation "
           "between 0.005-spaced points whose U₄ error bars overlap. Scatter of this size "
           "(≈ 0.01 in T) is therefore expected and no systematic shift is claimed.",
-          "", "![Binder cumulants](binder_cumulants.png)", "",
+          "", "![Binder cumulants](docs/images/binder_cumulants.png)", "",
           "### Critical slowing down", "",
           "Integrated autocorrelation time τ_int of |M| (Sokal automatic window, "
           "W ≥ 6 τ_int(W)), in sweeps:", "",
@@ -165,7 +165,7 @@ def _fss_markdown(fss: dict, meas: int, n_blocks: int) -> list[str]:
           "### Universal data collapse", "",
           f"Rescaling χ → χ N^(−γ/ν) and T → (T − T_c) N^(1/ν) with the exact 2D Ising "
           f"exponents γ = {GAMMA}, ν = {NU} and the exact T_c collapses all sizes onto one "
-          "curve:", "", "![Susceptibility collapse](fss_data_collapse.png)", "",
+          "curve:", "", "![Susceptibility collapse](docs/images/fss_data_collapse.png)", "",
           "| N | χ_max N^(−γ/ν) | T at χ_max |", "|---|---|---|"]
     for N in sizes:
         r = res[N]
@@ -213,7 +213,7 @@ def _algorithm_markdown(cmp: dict | None, pt: dict | None) -> list[str]:
               f"fraction is included). At N = {cmp['sizes'][k]} the Wolff chain decorrelates "
               f"in {cmp['wolff']['tau_cluster'][k]:.1f} updates against "
               f"{cmp['metropolis']['tau'][k]:,.0f} Metropolis sweeps.", "",
-              "![Critical slowing down](critical_slowing_down.png)", "",
+              "![Critical slowing down](docs/images/critical_slowing_down.png)", "",
               "Caveats: the comparison is in spin visits, not wall-clock time (Metropolis "
               "runs on the GPU, Wolff in single-threaded Python). Wolff has no "
               "Z₂-symmetry-breaking trouble at h = 0 and does not apply directly with a "
@@ -293,8 +293,8 @@ def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -
     ]
     for t in (1.2, 2.26, 3.8):
         L.append(f"| {t} | {at(t, 'magnetization'):.4f} | {at(t, 'energy'):.4f} |")
-    L += ["", "![phase transitions](phase_transitions.png)", "",
-          "![domain snapshots](domain_snapshots.png)", ""]
+    L += ["", "![phase transitions](docs/images/phase_transitions.png)", "",
+          "![domain snapshots](docs/images/domain_snapshots.png)", ""]
 
     L += _fss_markdown(fss, fss["metadata"]["meas_sweeps"], fss["metadata"]["n_blocks"])
     L += _algorithm_markdown(_load_json(COMPARE_PATH), _load_json(PT_PATH))
@@ -337,7 +337,7 @@ def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -
           "even for the 10,000 × 128² batch. Memory traffic in bytes/s was not profiled.",
           "", "## Benchmark comparison: CPU single-spin vs GPU checkerboard", "",
           "From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see "
-          "that file for the full N × B throughput grid and `benchmark_results.png`).", "",
+          "that file for the full N × B throughput grid and `docs/images/benchmark_results.png`).", "",
           _benchmark_sections(), "",
           "## Limitations", "",
           "- Single seed per dataset; peak locations are grid maxima without error bars.",
@@ -397,11 +397,15 @@ def write_readme(data: dict | None = None, path: str = "README.md") -> None:
 
 ## Live interactive simulation
 
-**[{PAGES_URL}]({PAGES_URL})** — a single-file, dependency-free browser simulator
-(`docs/index.html`): real-time spin canvas, temperature / field / speed sliders, Metropolis
-or Wolff cluster updates, live |M| and E plots, and presets for the frozen, critical and
-disordered regimes. Pages for the `docs/` folder (Settings → Pages → Deploy from branch → `/docs`).
-Open `docs/index.html` directly in a browser to run it locally.
+<p align="center">
+  <a href="{PAGES_URL}">
+    <img src="docs/images/simulator_preview.png" alt="Preview of the interactive 2D Ising simulator" width="900">
+  </a>
+</p>
+
+<p align="center">
+  <a href="{PAGES_URL}"><b>▶ Launch the live simulator</b></a>
+</p>
 
 ## Executive summary
 
@@ -447,17 +451,17 @@ to {s['tau_c'][-1]:,.0f} sweeps between N = {s['sizes'][0]} and N = {s['sizes'][
 {pt_md}
 ## Visualizations
 
-![Phase transition observables](phase_transitions.png)
+![Phase transition observables](docs/images/phase_transitions.png)
 
-![Domain snapshots at T = 1.2, 2.26, 3.8](domain_snapshots.png)
+![Domain snapshots at T = 1.2, 2.26, 3.8](docs/images/domain_snapshots.png)
 
-![Binder cumulant crossings](binder_cumulants.png)
+![Binder cumulant crossings](docs/images/binder_cumulants.png)
 
-![Susceptibility data collapse](fss_data_collapse.png)
+![Susceptibility data collapse](docs/images/fss_data_collapse.png)
 
-![Benchmark: CPU vs GPU](benchmark_results.png)
+![Benchmark: CPU vs GPU](docs/images/benchmark_results.png)
 
-![Critical slowing down: Metropolis vs Wolff](critical_slowing_down.png)
+![Critical slowing down: Metropolis vs Wolff](docs/images/critical_slowing_down.png)
 
 ## Physics & methodology
 
@@ -510,7 +514,7 @@ uv run python -m src.fss                   # FSS dataset -> data/fss_analysis.h5
 uv run python -m src.visualize             # sweep figures
 uv run python -m src.visualize_fss         # Binder + collapse figures
 uv run python -m src.wolff_ising           # Wolff cluster demo
-uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> critical_slowing_down.png
+uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> docs/images/critical_slowing_down.png
 uv run python -m src.parallel_tempering    # replica exchange demo -> data/pt_demo.json
 uv run python -m src.report                # regenerate SIMULATION_REPORT.md and README.md
 ```

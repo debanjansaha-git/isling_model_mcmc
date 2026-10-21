@@ -14,7 +14,7 @@ DATA_PATH = "data/ising_sweep_N128.h5"
 SNAPSHOT_TEMPS = (1.2, 2.27, 3.8)
 
 
-def plot_phase_transitions(data: dict, out: str = "phase_transitions.png") -> None:
+def plot_phase_transitions(data: dict, out: str = "docs/images/phase_transitions.png") -> None:
     sc = data["scalars"]
     N = data["metadata"]["N"]
     panels = [
@@ -41,7 +41,7 @@ def plot_phase_transitions(data: dict, out: str = "phase_transitions.png") -> No
     plt.close(fig)
 
 
-def plot_domain_snapshots(data: dict, out: str = "domain_snapshots.png") -> None:
+def plot_domain_snapshots(data: dict, out: str = "docs/images/domain_snapshots.png") -> None:
     T = data["scalars"]["T"]
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.6))
     cmap = ListedColormap(["#2c3e50", "#f1c40f"])  # -1, +1
@@ -62,7 +62,7 @@ def main() -> None:
     data = load_simulation_hdf5(DATA_PATH)
     plot_phase_transitions(data)
     plot_domain_snapshots(data)
-    print("wrote phase_transitions.png and domain_snapshots.png")
+    print("wrote docs/images/phase_transitions.png and docs/images/domain_snapshots.png")
 
     from src.report import write_report
 
