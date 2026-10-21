@@ -37,42 +37,50 @@ class ParallelTempering:
         init: str = "random",
         J: float = 1.0,
         device: str = "cuda:0",
+        ensembles: int = 1,
     ) -> None:
         self.N = N
         self.temps = np.asarray(temps, dtype=np.float64)
         self.R = len(self.temps)
-        self.model = GPUIsing2D(N=N, T=self.temps, batch=self.R, J=J, init=init, device=device)
+        self.E = ensembles  # independent ladders run side by side (ensemble-major layout)
+        self.model = GPUIsing2D(N=N, T=np.tile(self.temps, ensembles), batch=self.R * ensembles,
+                                J=J, init=init, device=device)
+        self._swap_count = 0  # drives even/odd pair alternation across calls
+        self._sweeps_done = 0
         dev = self.model.device
         self.beta = torch.as_tensor(1.0 / self.temps, dtype=torch.float64, device=dev)
         self.swap_attempts = torch.zeros(self.R - 1, dtype=torch.int64, device=dev)
         self.swap_accepts = torch.zeros(self.R - 1, dtype=torch.int64, device=dev)
-        self.replica_id = torch.arange(self.R, device=dev)  # which replica is in each slot
 
     @torch.no_grad()
     def swap_step(self, parity: int) -> None:
         """Propose swaps for slot pairs (i, i+1) with i % 2 == parity, all at once."""
-        i = torch.arange(parity, self.R - 1, 2, device=self.model.device)
+        dev = self.model.device
+        i = torch.arange(parity, self.R - 1, 2, device=dev)
         if len(i) == 0:
             return
-        E = self.model.compute_energy() * self.N**2  # total energies, float64
-        delta = (self.beta[i] - self.beta[i + 1]) * (E[i] - E[i + 1])
+        E = (self.model.compute_energy() * self.N**2).reshape(self.E, self.R)  # float64
+        delta = (self.beta[i] - self.beta[i + 1]) * (E[:, i] - E[:, i + 1])
         prob = torch.exp(torch.clamp(delta, max=0.0))
-        accept = torch.rand(len(i), dtype=torch.float64, device=self.model.device) < prob
+        accept = torch.rand(prob.shape, dtype=torch.float64, device=dev) < prob  # (E, pairs)
 
-        perm = torch.arange(self.R, device=self.model.device)
-        acc = i[accept]
-        perm[acc], perm[acc + 1] = acc + 1, acc  # simultaneous exchange of accepted pairs
-        self.model.spins = self.model.spins[perm]
-        self.replica_id = self.replica_id[perm]
-        self.swap_attempts[i] += 1
-        self.swap_accepts[i] += accept.to(torch.int64)
+        perm = torch.arange(self.R, device=dev).repeat(self.E, 1)  # (E, R), within-ladder
+        e_idx, k_idx = accept.nonzero(as_tuple=True)
+        a = i[k_idx]
+        perm[e_idx, a], perm[e_idx, a + 1] = a + 1, a  # exchange accepted pairs at once
+        offset = torch.arange(self.E, device=dev)[:, None] * self.R
+        self.model.spins = self.model.spins[(perm + offset).reshape(-1)]
+        self.swap_attempts[i] += self.E
+        self.swap_accepts[i] += accept.sum(0)
 
     def sweep(self, n_sweeps: int = 1, swap_interval: int = 1) -> None:
         """n_sweeps local sweeps, with a swap proposal after every swap_interval."""
-        for t in range(n_sweeps):
+        for _ in range(n_sweeps):
             self.model.sweep(1)
-            if (t + 1) % swap_interval == 0:
-                self.swap_step(parity=(t // swap_interval) % 2)
+            self._sweeps_done += 1
+            if self._sweeps_done % swap_interval == 0:
+                self.swap_step(parity=self._swap_count % 2)
+                self._swap_count += 1
 
     def run(self, therm_sweeps: int, meas_sweeps: int, swap_interval: int = 1) -> dict:
         """Thermalize, then average |M| and E per slot over meas_sweeps sweeps."""
@@ -80,25 +88,29 @@ class ParallelTempering:
         self.swap_attempts.zero_()
         self.swap_accepts.zero_()
         dev = self.model.device
-        m_sum = torch.zeros(self.R, dtype=torch.float64, device=dev)
+        m_sum = torch.zeros(self.E * self.R, dtype=torch.float64, device=dev)
         e_sum = torch.zeros_like(m_sum)
         for _ in range(meas_sweeps):
             self.sweep(1, swap_interval)
             m_sum += self.model.compute_magnetization()
             e_sum += self.model.compute_energy()
         rate = self.swap_accepts.double() / self.swap_attempts.clamp(min=1)
+        by_ensemble = (m_sum / meas_sweeps).reshape(self.E, self.R)
         return {
             "T": self.temps,
-            "magnetization": (m_sum / meas_sweeps).cpu().numpy(),
-            "energy": (e_sum / meas_sweeps).cpu().numpy(),
+            "magnetization": by_ensemble.mean(0).cpu().numpy(),
+            "energy": (e_sum / meas_sweeps).reshape(self.E, self.R).mean(0).cpu().numpy(),
             "swap_rate": rate.cpu().numpy(),
+            "final_magnetization": self.model.compute_magnetization()
+            .reshape(self.E, self.R).cpu().numpy(),
+            "window_magnetization": by_ensemble.cpu().numpy(),
         }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Parallel tempering vs plain Metropolis")
     parser.add_argument("--N", type=int, default=32)
-    parser.add_argument("--replicas", type=int, default=64)
+    parser.add_argument("--replicas", type=int, default=151)
     parser.add_argument("--therm", type=int, default=10000)
     parser.add_argument("--meas", type=int, default=5000)
     parser.add_argument("--out", default=OUTPUT_PATH)
@@ -129,6 +141,8 @@ def main() -> None:
         "plain_stuck_fraction": stuck,
         "plain_mean_magnetization": float(m_plain.mean()),
         "runtime_s": pt_time,
+        "temps": [float(x) for x in temps],
+        "swap_rate": [float(x) for x in res["swap_rate"]],
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=2))

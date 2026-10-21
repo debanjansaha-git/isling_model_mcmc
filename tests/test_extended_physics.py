@@ -139,3 +139,31 @@ def test_parallel_tempering_escapes_frozen_stripes() -> None:
     res = pt.run(therm_sweeps=6000, meas_sweeps=3000)
     assert res["T"][0] == pytest.approx(1.0)
     assert res["magnetization"][0] > 0.98
+
+
+@needs_cuda
+def test_every_adjacent_pair_receives_swap_proposals() -> None:
+    pt = ParallelTempering(N=8, temps=np.linspace(2.0, 3.0, 6))
+    for _ in range(100):  # one sweep per call, as run() does
+        pt.sweep(1)
+    assert (pt.swap_attempts > 0).all()  # both even and odd pairs must be proposed
+    assert (pt.swap_accepts > 0).all()
+
+
+@needs_cuda
+def test_ensembles_swap_only_within_their_own_ladder() -> None:
+    temps = np.linspace(2.0, 3.0, 4)
+    pt = ParallelTempering(N=8, temps=temps, ensembles=3)
+    assert pt.model.B == 12
+
+    def blocks() -> list[list[bytes]]:
+        s = pt.model.spins.reshape(3, 4, 8, 8)
+        return [sorted(r.cpu().numpy().tobytes() for r in e) for e in s]
+
+    before = blocks()
+    for parity in (0, 1) * 10:
+        pt.swap_step(parity)
+        assert blocks() == before
+    res = pt.run(therm_sweeps=50, meas_sweeps=50)
+    assert res["magnetization"].shape == (4,)
+    assert res["final_magnetization"].shape == (3, 4)

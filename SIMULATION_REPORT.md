@@ -83,6 +83,54 @@ Rescaling χ → χ N^(−γ/ν) and T → (T − T_c) N^(1/ν) with the exact 2
 
 The scaled peak height is constant to within a few percent across sizes (N=32 is slightly lower, as expected from corrections to scaling). The collapse is a visual and peak-height check, not a fitted exponent estimate.
 
+## Algorithm comparison: Metropolis vs Wolff cluster updates
+
+Integrated autocorrelation time of |M| at T = 2.269 (≈ T_c), Sokal window. Metropolis: 8 independent GPU chains per size, mean ± standard error, in sweeps. Wolff: one CPU chain of 20,000 cluster updates, in cluster updates. One Wolff update visits ⟨|C|⟩ spins, so it costs ⟨|C|⟩/N² of a sweep; the sweep-equivalent column converts to that unit.
+
+| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | ⟨\|C\|⟩/N² | Wolff τ_int (sweep-equiv.) | Metropolis / Wolff |
+|---|---|---|---|---|---|
+| 16 | 11 ± 0 | 2.38 | 0.54 | 1.29 | 8× |
+| 32 | 44 ± 3 | 3.39 | 0.46 | 1.57 | 28× |
+| 64 | 203 ± 14 | 3.81 | 0.38 | 1.45 | 140× |
+| 128 | 536 ± 57 | 5.19 | 0.32 | 1.68 | 320× |
+
+Fitted exponents τ ∝ N^z: Metropolis z = 1.92; Wolff z = 0.35 in cluster updates (0.10 in sweep-equivalents, where the growing cluster fraction is included). At N = 128 the Wolff chain decorrelates in 5.2 updates against 536 Metropolis sweeps.
+
+![Critical slowing down](critical_slowing_down.png)
+
+Caveats: the comparison is in spin visits, not wall-clock time (Metropolis runs on the GPU, Wolff in single-threaded Python). Wolff has no Z₂-symmetry-breaking trouble at h = 0 and does not apply directly with a field (a Metropolis test on the field energy is added). Exponent fits use only 4 sizes and carry corresponding uncertainty.
+
+## Parallel tempering
+
+151 replicas of a 32×32 lattice, geometric temperature ladder T ∈ [1.0, 4.0], random initial configurations, 10,000 + 5,000 sweeps with a swap proposal (alternating even/odd pairs) after every sweep. Control: 151 independent Metropolis chains at T = 1 from random starts with the same sweep count and no swaps.
+
+| Method | ⟨\|M\|⟩ at T = 1 | Notes |
+|---|---|---|
+| Parallel tempering | 0.9993 | ⟨E⟩ = -1.9972; swap acceptance mean 0.90, min 0.76 |
+| Plain Metropolis, random start | 0.9994 | 0% of chains stuck below |M| = 0.9 |
+
+Swap acceptance between adjacent slots (T_i, T_i+1), sampled across the ladder:
+
+| T_i | acceptance |
+|---|---|
+| 1.000 | 0.98 |
+| 1.097 | 0.96 |
+| 1.203 | 0.96 |
+| 1.320 | 0.95 |
+| 1.447 | 0.93 |
+| 1.587 | 0.92 |
+| 1.741 | 0.90 |
+| 1.910 | 0.88 |
+| 2.095 | 0.84 |
+| 2.297 | 0.77 |
+| 2.520 | 0.85 |
+| 2.764 | 0.88 |
+| 3.031 | 0.91 |
+| 3.325 | 0.92 |
+| 3.647 | 0.93 |
+
+Minimum over all 150 pairs: 0.76; the dip near T_c is where the energy distributions of neighbours overlap least.
+
 ## Hardware & execution summary
 
 Hardware: NVIDIA GeForce RTX 2060 SUPER (8 GB, compute capability 7.5), torch with CUDA 12.1.
@@ -96,7 +144,7 @@ Hardware: NVIDIA GeForce RTX 2060 SUPER (8 GB, compute capability 7.5), torch wi
 | Peak raw engine throughput (benchmark, large batch) | 1.29e+09 spin-updates/s |
 | CPU baseline, one 128×128 sweep (measured) | 49 ms |
 | CPU estimate for the production workload (extrapolated) | 26.9 h |
-| Speedup on the production workload | ≈ 2,869× |
+| Speedup on the production workload | ≈ 2,864× |
 | Speedup, raw engine throughput (best-case batches) | 4,472–4,627× |
 
 The production run is slower than the raw engine rate because it measures M and E after every sweep (extra kernels per sweep). Speedups compare against the pure-Python CPU baseline and are extrapolated from short CPU timings; they do not compare against an optimized (e.g. C/numba, multispin-coded) CPU implementation.

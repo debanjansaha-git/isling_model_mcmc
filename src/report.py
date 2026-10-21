@@ -233,6 +233,13 @@ def _algorithm_markdown(cmp: dict | None, pt: dict | None) -> list[str]:
               f"{pt['mean_swap_rate']:.2f}, min {pt['min_swap_rate']:.2f} |",
               f"| Plain Metropolis, random start | {pt['plain_mean_magnetization']:.4f} | "
               f"{pt['plain_stuck_fraction']:.0%} of chains stuck below |M| = 0.9 |", ""]
+        if "swap_rate" in pt:
+            T, r = pt["temps"], pt["swap_rate"]
+            L += ["Swap acceptance between adjacent slots (T_i, T_i+1), sampled across the ladder:", "",
+                  "| T_i | acceptance |", "|---|---|"]
+            L += [f"| {T[k]:.3f} | {r[k]:.2f} |" for k in range(0, len(r), max(1, len(r) // 15))]
+            L += ["", f"Minimum over all {len(r)} pairs: {min(r):.2f}; the dip near T_c is where "
+                  "the energy distributions of neighbours overlap least.", ""]
     return L
 
 
@@ -383,7 +390,8 @@ def write_readme(data: dict | None = None, path: str = "README.md") -> None:
         pt_md = (f"**Parallel tempering** ({pt['replicas']} GPU replicas, T ∈ [1, 4], random "
                  f"starts): ⟨|M|⟩ at T = 1 is {pt['pt_magnetization_T1']:.4f}, while "
                  f"{pt['plain_stuck_fraction']:.0%} of plain Metropolis chains from random "
-                 "starts remain trapped in stripe domains.\n")
+                 "starts stay below |M| = 0.9 at this lattice size (stripe traps are "
+                 "size- and seed-dependent).\n")
 
     R = f"""# GPU-Accelerated 2D Ising Model — Monte Carlo with Error Analysis
 

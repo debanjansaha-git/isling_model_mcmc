@@ -1,5 +1,13 @@
 # GPU-Accelerated 2D Ising Model — Monte Carlo with Error Analysis
 
+## Live interactive simulation
+
+**[https://debanjansaha-git.github.io/isling_model_mcmc/](https://debanjansaha-git.github.io/isling_model_mcmc/)** — a single-file, dependency-free browser simulator
+(`docs/index.html`): real-time spin canvas, temperature / field / speed sliders, Metropolis
+or Wolff cluster updates, live |M| and E plots, and presets for the frozen, critical and
+disordered regimes. Pages for the `docs/` folder (Settings → Pages → Deploy from branch → `/docs`).
+Open `docs/index.html` directly in a browser to run it locally.
+
 ## Executive summary
 
 Metropolis Markov chain Monte Carlo for the 2D Ising model on an NVIDIA RTX 2060 Super.
@@ -22,7 +30,7 @@ correctness reference and the performance baseline.
 | Workload | GPU speedup |
 |---|---|
 | Raw engine, large batches | 4,472–4,627× |
-| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,869× |
+| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,864× |
 
 The baseline is unoptimized Python; the speedup is not a comparison with tuned CPU code.
 CPU times are extrapolated from short runs.
@@ -41,6 +49,19 @@ Critical slowing down: τ_int(|M|) at T = 2.27 grows from 39
 to 802 sweeps between N = 32 and N = 128
 (scan maximum: 53 → 2,380).
 
+**Metropolis vs Wolff** — integrated autocorrelation time of |M| at T = 2.269 (Wolff converted to sweep-equivalents; one update costs ⟨|C|⟩/N² sweeps):
+
+| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | Wolff τ_int (sweep-equiv.) |
+|---|---|---|---|
+| 16 | 11 | 2.38 | 1.29 |
+| 32 | 44 | 3.39 | 1.57 |
+| 64 | 203 | 3.81 | 1.45 |
+| 128 | 536 | 5.19 | 1.68 |
+
+Fitted τ ∝ N^z: Metropolis z = 1.92, Wolff z = 0.35 (per update). Single-spin Metropolis slows down near T_c; cluster updates largely remove the effect.
+
+**Parallel tempering** (151 GPU replicas, T ∈ [1, 4], random starts): ⟨|M|⟩ at T = 1 is 0.9993, while 0% of plain Metropolis chains from random starts stay below |M| = 0.9 at this lattice size (stripe traps are size- and seed-dependent).
+
 ## Visualizations
 
 ![Phase transition observables](phase_transitions.png)
@@ -52,6 +73,8 @@ to 802 sweeps between N = 32 and N = 128
 ![Susceptibility data collapse](fss_data_collapse.png)
 
 ![Benchmark: CPU vs GPU](benchmark_results.png)
+
+![Critical slowing down: Metropolis vs Wolff](critical_slowing_down.png)
 
 ## Physics & methodology
 
@@ -67,6 +90,17 @@ neighbors, so all Red spins can be updated simultaneously without violating deta
 balance; then all Black spins are updated using the new Red values. A flip is accepted
 with probability min(1, e^(−ΔE/T)), ΔE = 2σ(J Σ_nn σ + h); neighbor sums use `torch.roll`.
 Each lattice carries its own temperature in a (B, 1, 1) tensor. Spins are int8.
+
+**Wolff cluster algorithm.** Pick a random seed spin; each aligned neighbor of a cluster
+spin joins with probability P_add = 1 − exp(−2J/T) (stack-based DFS); flip the whole
+cluster with probability 1. This satisfies detailed balance at h = 0 and avoids
+critical slowing down. For h ≠ 0 the flip is additionally accepted with
+min(1, exp(−2hs|C|/T)).
+
+**Parallel tempering.** Replicas at ascending temperatures T₁ < … < T_R each run
+checkerboard sweeps; adjacent configurations are exchanged with probability
+min(1, exp((1/T_i − 1/T_{i+1})(E_i − E_{i+1}))), letting configurations trapped in
+frozen domains diffuse to high T and re-order.
 
 **Autocorrelation (Sokal window).** C(t) is the normalized autocovariance (FFT). The
 integrated time is τ_int(W) = ½ + Σ_{t=1}^{W} C(t), with the window W chosen as the
@@ -92,6 +126,9 @@ uv run python -m src.simulate              # N=128 sweep -> data/ising_sweep_N12
 uv run python -m src.fss                   # FSS dataset -> data/fss_analysis.h5 (~5 min)
 uv run python -m src.visualize             # sweep figures
 uv run python -m src.visualize_fss         # Binder + collapse figures
+uv run python -m src.wolff_ising           # Wolff cluster demo
+uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> critical_slowing_down.png
+uv run python -m src.parallel_tempering    # replica exchange demo -> data/pt_demo.json
 uv run python -m src.report                # regenerate SIMULATION_REPORT.md and README.md
 ```
 
@@ -104,6 +141,10 @@ uv run python -m src.report                # regenerate SIMULATION_REPORT.md and
 | `src/cpu_ising.py` | Sequential single-spin Metropolis baseline |
 | `src/gpu_ising.py` | Batched checkerboard engine (PyTorch CUDA) |
 | `src/simulate.py` | Production temperature sweep |
+| `src/wolff_ising.py` | Wolff single-cluster algorithm (NumPy) |
+| `src/parallel_tempering.py` | GPU replica-exchange MCMC |
+| `src/compare_algorithms.py` | Metropolis vs Wolff autocorrelation study |
+| `docs/index.html` | Interactive browser simulator (GitHub Pages) |
 | `src/stats.py` | Autocorrelation and jackknife |
 | `src/fss.py` | Binder cumulant and finite-size-scaling runs |
 | `src/data_io.py` | HDF5 read/write |
