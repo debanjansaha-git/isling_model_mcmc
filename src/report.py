@@ -1,6 +1,7 @@
 """Generate SIMULATION_REPORT.md and README.md from the saved sweep and FSS data."""
 
 import functools
+import json
 import re
 import time
 from pathlib import Path
@@ -13,6 +14,9 @@ from src.fss import find_crossing
 
 SWEEP_PATH = "data/ising_sweep_N128.h5"
 FSS_PATH = "data/fss_analysis.h5"
+COMPARE_PATH = "data/compare_algorithms.json"
+PT_PATH = "data/pt_demo.json"
+PAGES_URL = "https://debanjansaha-git.github.io/isling_model_mcmc/"
 GAMMA, NU = 1.75, 1.0
 
 
@@ -173,6 +177,65 @@ def _fss_markdown(fss: dict, meas: int, n_blocks: int) -> list[str]:
     return L
 
 
+def _load_json(path: str) -> dict | None:
+    p = Path(path)
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def _algorithm_rows(cmp: dict) -> list[str]:
+    rows = []
+    for k, N in enumerate(cmp["sizes"]):
+        tm, te = cmp["metropolis"]["tau"][k], cmp["metropolis"]["tau_err"][k]
+        w = cmp["wolff"]
+        rows.append(f"| {N} | {tm:,.0f} ± {te:,.0f} | {w['tau_cluster'][k]:.2f} | "
+                    f"{w['cluster_fraction'][k]:.2f} | {w['tau_sweeps'][k]:.2f} | "
+                    f"{tm / w['tau_sweeps'][k]:,.0f}× |")
+    return rows
+
+
+def _algorithm_markdown(cmp: dict | None, pt: dict | None) -> list[str]:
+    L: list[str] = []
+    if cmp:
+        k = len(cmp["sizes"]) - 1
+        L += ["## Algorithm comparison: Metropolis vs Wolff cluster updates", "",
+              f"Integrated autocorrelation time of |M| at T = {cmp['T']} (≈ T_c), Sokal "
+              f"window. Metropolis: {cmp['chains']} independent GPU chains per size, mean ± "
+              f"standard error, in sweeps. Wolff: one CPU chain of {cmp['wolff_updates']:,} "
+              "cluster updates, in cluster updates. One Wolff update visits ⟨|C|⟩ spins, so "
+              "it costs ⟨|C|⟩/N² of a sweep; the sweep-equivalent column converts to "
+              "that unit.", "",
+              "| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | ⟨\\|C\\|⟩/N² | "
+              "Wolff τ_int (sweep-equiv.) | Metropolis / Wolff |",
+              "|---|---|---|---|---|---|", *_algorithm_rows(cmp), "",
+              f"Fitted exponents τ ∝ N^z: Metropolis z = {cmp['z_metropolis']:.2f}; "
+              f"Wolff z = {cmp['z_wolff_cluster']:.2f} in cluster updates "
+              f"({cmp['z_wolff_sweeps']:.2f} in sweep-equivalents, where the growing cluster "
+              f"fraction is included). At N = {cmp['sizes'][k]} the Wolff chain decorrelates "
+              f"in {cmp['wolff']['tau_cluster'][k]:.1f} updates against "
+              f"{cmp['metropolis']['tau'][k]:,.0f} Metropolis sweeps.", "",
+              "![Critical slowing down](critical_slowing_down.png)", "",
+              "Caveats: the comparison is in spin visits, not wall-clock time (Metropolis "
+              "runs on the GPU, Wolff in single-threaded Python). Wolff has no "
+              "Z₂-symmetry-breaking trouble at h = 0 and does not apply directly with a "
+              "field (a Metropolis test on the field energy is added). Exponent fits use "
+              f"only {len(cmp['sizes'])} sizes and carry corresponding uncertainty.", ""]
+    if pt:
+        L += ["## Parallel tempering", "",
+              f"{pt['replicas']} replicas of a {pt['N']}×{pt['N']} lattice, geometric "
+              f"temperature ladder T ∈ [{pt['T_min']}, {pt['T_max']}], random initial "
+              f"configurations, {pt['therm_sweeps']:,} + {pt['meas_sweeps']:,} sweeps with "
+              "a swap proposal (alternating even/odd pairs) after every sweep. Control: "
+              f"{pt['replicas']} independent Metropolis chains at T = 1 from random starts "
+              "with the same sweep count and no swaps.", "",
+              "| Method | ⟨\\|M\\|⟩ at T = 1 | Notes |", "|---|---|---|",
+              f"| Parallel tempering | {pt['pt_magnetization_T1']:.4f} | "
+              f"⟨E⟩ = {pt['pt_energy_T1']:.4f}; swap acceptance mean "
+              f"{pt['mean_swap_rate']:.2f}, min {pt['min_swap_rate']:.2f} |",
+              f"| Plain Metropolis, random start | {pt['plain_mean_magnetization']:.4f} | "
+              f"{pt['plain_stuck_fraction']:.0%} of chains stuck below |M| = 0.9 |", ""]
+    return L
+
+
 def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -> None:
     data = data or load_simulation_hdf5(SWEEP_PATH)
     fss = load_fss_hdf5(FSS_PATH)
@@ -227,6 +290,7 @@ def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -
           "![domain snapshots](domain_snapshots.png)", ""]
 
     L += _fss_markdown(fss, fss["metadata"]["meas_sweeps"], fss["metadata"]["n_blocks"])
+    L += _algorithm_markdown(_load_json(COMPARE_PATH), _load_json(PT_PATH))
 
     L += [
         "## Hardware & execution summary",
@@ -300,7 +364,36 @@ def write_readme(data: dict | None = None, path: str = "README.md") -> None:
     speed_rows.append(f"| Full production run (13,000 sweeps × {md['batch']} lattices, "
                       f"with per-sweep measurement) | ≈ {speedup:,.0f}× |")
 
+    cmp = _load_json(COMPARE_PATH)
+    pt = _load_json(PT_PATH)
+    algo_md = ""
+    if cmp:
+        algo_md = "\n".join([
+            f"**Metropolis vs Wolff** — integrated autocorrelation time of |M| at T = {cmp['T']} "
+            "(Wolff converted to sweep-equivalents; one update costs ⟨|C|⟩/N² sweeps):", "",
+            "| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | Wolff τ_int (sweep-equiv.) |",
+            "|---|---|---|---|",
+            *[f"| {N} | {cmp['metropolis']['tau'][k]:,.0f} | {cmp['wolff']['tau_cluster'][k]:.2f} "
+              f"| {cmp['wolff']['tau_sweeps'][k]:.2f} |" for k, N in enumerate(cmp["sizes"])],
+            "", f"Fitted τ ∝ N^z: Metropolis z = {cmp['z_metropolis']:.2f}, Wolff "
+            f"z = {cmp['z_wolff_cluster']:.2f} (per update). Single-spin Metropolis slows "
+            "down near T_c; cluster updates largely remove the effect.", ""])
+    pt_md = ""
+    if pt:
+        pt_md = (f"**Parallel tempering** ({pt['replicas']} GPU replicas, T ∈ [1, 4], random "
+                 f"starts): ⟨|M|⟩ at T = 1 is {pt['pt_magnetization_T1']:.4f}, while "
+                 f"{pt['plain_stuck_fraction']:.0%} of plain Metropolis chains from random "
+                 "starts remain trapped in stripe domains.\n")
+
     R = f"""# GPU-Accelerated 2D Ising Model — Monte Carlo with Error Analysis
+
+## Live interactive simulation
+
+**[{PAGES_URL}]({PAGES_URL})** — a single-file, dependency-free browser simulator
+(`docs/index.html`): real-time spin canvas, temperature / field / speed sliders, Metropolis
+or Wolff cluster updates, live |M| and E plots, and presets for the frozen, critical and
+disordered regimes. Pages for the `docs/` folder (Settings → Pages → Deploy from branch → `/docs`).
+Open `docs/index.html` directly in a browser to run it locally.
 
 ## Executive summary
 
@@ -342,6 +435,8 @@ Critical slowing down: τ_int(|M|) at T = {s['T_eval']:.2f} grows from {s['tau_c
 to {s['tau_c'][-1]:,.0f} sweeps between N = {s['sizes'][0]} and N = {s['sizes'][-1]}
 (scan maximum: {s['tau_max'][0]:,.0f} → {s['tau_max'][-1]:,.0f}).
 
+{algo_md}
+{pt_md}
 ## Visualizations
 
 ![Phase transition observables](phase_transitions.png)
@@ -353,6 +448,8 @@ to {s['tau_c'][-1]:,.0f} sweeps between N = {s['sizes'][0]} and N = {s['sizes'][
 ![Susceptibility data collapse](fss_data_collapse.png)
 
 ![Benchmark: CPU vs GPU](benchmark_results.png)
+
+![Critical slowing down: Metropolis vs Wolff](critical_slowing_down.png)
 
 ## Physics & methodology
 
@@ -368,6 +465,17 @@ neighbors, so all Red spins can be updated simultaneously without violating deta
 balance; then all Black spins are updated using the new Red values. A flip is accepted
 with probability min(1, e^(−ΔE/T)), ΔE = 2σ(J Σ_nn σ + h); neighbor sums use `torch.roll`.
 Each lattice carries its own temperature in a (B, 1, 1) tensor. Spins are int8.
+
+**Wolff cluster algorithm.** Pick a random seed spin; each aligned neighbor of a cluster
+spin joins with probability P_add = 1 − exp(−2J/T) (stack-based DFS); flip the whole
+cluster with probability 1. This satisfies detailed balance at h = 0 and avoids
+critical slowing down. For h ≠ 0 the flip is additionally accepted with
+min(1, exp(−2hs|C|/T)).
+
+**Parallel tempering.** Replicas at ascending temperatures T₁ < … < T_R each run
+checkerboard sweeps; adjacent configurations are exchanged with probability
+min(1, exp((1/T_i − 1/T_{{i+1}})(E_i − E_{{i+1}}))), letting configurations trapped in
+frozen domains diffuse to high T and re-order.
 
 **Autocorrelation (Sokal window).** C(t) is the normalized autocovariance (FFT). The
 integrated time is τ_int(W) = ½ + Σ_{{t=1}}^{{W}} C(t), with the window W chosen as the
@@ -393,6 +501,9 @@ uv run python -m src.simulate              # N=128 sweep -> data/ising_sweep_N12
 uv run python -m src.fss                   # FSS dataset -> data/fss_analysis.h5 (~5 min)
 uv run python -m src.visualize             # sweep figures
 uv run python -m src.visualize_fss         # Binder + collapse figures
+uv run python -m src.wolff_ising           # Wolff cluster demo
+uv run python -m src.compare_algorithms    # Metropolis vs Wolff tau_int -> critical_slowing_down.png
+uv run python -m src.parallel_tempering    # replica exchange demo -> data/pt_demo.json
 uv run python -m src.report                # regenerate SIMULATION_REPORT.md and README.md
 ```
 
@@ -405,6 +516,10 @@ uv run python -m src.report                # regenerate SIMULATION_REPORT.md and
 | `src/cpu_ising.py` | Sequential single-spin Metropolis baseline |
 | `src/gpu_ising.py` | Batched checkerboard engine (PyTorch CUDA) |
 | `src/simulate.py` | Production temperature sweep |
+| `src/wolff_ising.py` | Wolff single-cluster algorithm (NumPy) |
+| `src/parallel_tempering.py` | GPU replica-exchange MCMC |
+| `src/compare_algorithms.py` | Metropolis vs Wolff autocorrelation study |
+| `docs/index.html` | Interactive browser simulator (GitHub Pages) |
 | `src/stats.py` | Autocorrelation and jackknife |
 | `src/fss.py` | Binder cumulant and finite-size-scaling runs |
 | `src/data_io.py` | HDF5 read/write |

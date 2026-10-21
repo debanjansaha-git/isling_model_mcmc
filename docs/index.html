@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2D Ising Model Simulator</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #5d6677; --border: #d5d9e0;
+    --accent: #2f6fdb; --plus: #d6453d; --minus: #2f6fdb; --grid: #e6e9ee;
+    --chart-m: #8a3ffc; --chart-e: #0f8b8d; --ref: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --panel: #1b202b; --text: #e8ebf2; --muted: #9aa3b5; --border: #2e3545;
+      --accent: #6ea0ff; --grid: #2a3141; --chart-m: #b18cff; --chart-e: #4fd1c5; --ref: #ff8a7a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 16px 16px 4px; max-width: 1180px; margin: 0 auto; }
+  h1 { margin: 0 0 2px; font-size: 1.35rem; }
+  header p { margin: 0; color: var(--muted); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px;
+         max-width: 1180px; margin: 12px auto 24px; padding: 0 16px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+           padding: 14px; }
+  #lattice-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  #lattice { width: 100%; max-width: 680px; aspect-ratio: 1; image-rendering: pixelated;
+             border: 1px solid var(--border); border-radius: 4px; background: #000; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 0.85rem; flex-wrap: wrap;
+            justify-content: center; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px;
+        vertical-align: -1px; }
+  .ctrl { margin-bottom: 12px; }
+  .ctrl label { display: flex; justify-content: space-between; font-weight: 600;
+                font-size: 0.9rem; margin-bottom: 2px; }
+  .ctrl output { font-variant-numeric: tabular-nums; color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  button, select { font: inherit; color: var(--text); background: var(--bg);
+                   border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+                   cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent);
+                   outline-offset: 2px; }
+  button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 12px; padding: 6px 10px 8px; }
+  legend { font-weight: 600; font-size: 0.9rem; padding: 0 4px; }
+  fieldset label { margin-right: 14px; cursor: pointer; }
+  .chart { margin-top: 10px; }
+  .chart .title { display: flex; justify-content: space-between; font-size: 0.85rem;
+                  font-weight: 600; }
+  .chart .title span:last-child { font-variant-numeric: tabular-nums; color: var(--accent); }
+  canvas.micro { width: 100%; height: 84px; display: block; border: 1px solid var(--border);
+                 border-radius: 4px; background: var(--panel); }
+  .note { color: var(--muted); font-size: 0.8rem; margin: 8px 0 0; }
+  .stats { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>2D Ising Model Simulator</h1>
+  <p>Metropolis and Wolff cluster Monte Carlo on a periodic square lattice (J = 1, k<sub>B</sub> = 1).
+     Onsager critical temperature T<sub>c</sub> ≈ 2.269.</p>
+</header>
+<main>
+  <section class="panel" id="lattice-wrap" aria-label="Spin lattice">
+    <canvas id="lattice" aria-label="Spin configuration: red is +1, blue is -1"></canvas>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--plus)"></i>+1 (red)</span>
+      <span><i class="sw" style="background:var(--minus)"></i>−1 (blue)</span>
+      <span class="stats" id="stats">sweeps: 0</span>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="Controls">
+    <fieldset>
+      <legend>Algorithm</legend>
+      <label><input type="radio" name="algo" value="metropolis" checked> Metropolis</label>
+      <label><input type="radio" name="algo" value="wolff"> Wolff cluster</label>
+    </fieldset>
+
+    <div class="ctrl">
+      <label for="T">Temperature T <output id="T-out">2.27</output></label>
+      <input id="T" type="range" min="0.5" max="5" step="0.01" value="2.27">
+    </div>
+    <div class="ctrl">
+      <label for="h">External field h <output id="h-out">0.00</output></label>
+      <input id="h" type="range" min="-2" max="2" step="0.01" value="0">
+    </div>
+    <div class="ctrl">
+      <label for="speed">Speed (sweeps / frame) <output id="speed-out">1.0</output></label>
+      <input id="speed" type="range" min="0.1" max="20" step="0.1" value="1">
+    </div>
+
+    <div class="row" role="group" aria-label="Presets">
+      <button type="button" data-T="1.0">Freeze (T=1.0)</button>
+      <button type="button" data-T="2.27">Critical Point (T=2.27)</button>
+      <button type="button" data-T="4.0">Disorder (T=4.0)</button>
+    </div>
+    <div class="row">
+      <button type="button" id="run" class="active">Pause</button>
+      <button type="button" id="random">Randomize</button>
+      <button type="button" id="up">All up</button>
+      <label>Size <select id="size" aria-label="Lattice size">
+        <option>64</option><option selected>128</option><option>256</option></select></label>
+    </div>
+
+    <div class="chart">
+      <div class="title"><span>Magnetization |M|</span><span id="m-val">–</span></div>
+      <canvas id="chart-m" class="micro" aria-label="Magnetization history"></canvas>
+    </div>
+    <div class="chart">
+      <div class="title"><span>Energy per spin E</span><span id="e-val">–</span></div>
+      <canvas id="chart-e" class="micro" aria-label="Energy history"></canvas>
+    </div>
+    <p class="note" id="note"></p>
+  </aside>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const TC = 2 / Math.log(1 + Math.SQRT2);
+  const HISTORY = 360;
+  const FRAME_BUDGET_MS = 9;
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('lattice'), ctx = canvas.getContext('2d');
+  const el = { T: $('T'), h: $('h'), speed: $('speed'), size: $('size'), run: $('run'),
+               stats: $('stats'), note: $('note'), mVal: $('m-val'), eVal: $('e-val') };
+
+  let N = 128, LOG2 = 7, MASK = 127, n = N * N;
+  let spins, image, pixels, cluster, inCluster;
+  let T = 2.27, h = 0, speed = 1, algo = 'metropolis', running = true;
+  let budget = 0, sweeps = 0;
+  const histM = [], histE = [];
+
+  // ---- lattice setup -------------------------------------------------------
+  function setSize(size) {
+    N = size; LOG2 = Math.log2(N); MASK = N - 1; n = N * N;
+    spins = new Int8Array(n);
+    cluster = new Int32Array(n);
+    inCluster = new Uint8Array(n);
+    canvas.width = N; canvas.height = N;
+    image = ctx.createImageData(N, N);
+    pixels = new Uint32Array(image.data.buffer);
+    randomize();
+  }
+  function randomize() {
+    for (let i = 0; i < n; i++) spins[i] = Math.random() < 0.5 ? -1 : 1;
+    resetHistory();
+  }
+  function allUp() { spins.fill(1); resetHistory(); }
+  function resetHistory() { histM.length = 0; histE.length = 0; sweeps = 0; budget = 0; }
+
+  // ---- dynamics ------------------------------------------------------------
+  function metropolis(steps) {
+    const beta = 1 / T;
+    for (let k = 0; k < steps; k++) {
+      const i = (Math.random() * n) | 0;
+      const c = i & MASK, r = i >> LOG2;
+      const nb = spins[(((r + 1) & MASK) << LOG2) | c] + spins[(((r - 1) & MASK) << LOG2) | c]
+               + spins[(r << LOG2) | ((c + 1) & MASK)] + spins[(r << LOG2) | ((c - 1) & MASK)];
+      const dE = 2 * spins[i] * (nb + h);
+      if (dE <= 0 || Math.random() < Math.exp(-dE * beta)) spins[i] = -spins[i];
+    }
+  }
+
+  // Wolff: P_add = 1 - exp(-2J/T). With h != 0 the flip is additionally accepted
+  // with min(1, exp(-dE_field/T)), dE_field = 2 h s |C|. Returns cluster size.
+  function wolff() {
+    const pAdd = 1 - Math.exp(-2 / T);
+    const seed = (Math.random() * n) | 0;
+    const s = spins[seed];
+    let head = 0, size = 1;
+    cluster[0] = seed; inCluster[seed] = 1;
+    while (head < size) {
+      const i = cluster[head++];
+      const c = i & MASK, r = i >> LOG2;
+      const nbs = [(((r + 1) & MASK) << LOG2) | c, (((r - 1) & MASK) << LOG2) | c,
+                   (r << LOG2) | ((c + 1) & MASK), (r << LOG2) | ((c - 1) & MASK)];
+      for (let k = 0; k < 4; k++) {
+        const j = nbs[k];
+        if (!inCluster[j] && spins[j] === s && Math.random() < pAdd) {
+          inCluster[j] = 1; cluster[size++] = j;
+        }
+      }
+    }
+    const dEfield = 2 * h * s * size;
+    const accept = dEfield <= 0 || Math.random() < Math.exp(-dEfield / T);
+    for (let k = 0; k < size; k++) {
+      inCluster[cluster[k]] = 0;
+      if (accept) spins[cluster[k]] = -s;
+    }
+    return size;
+  }
+
+  function advance() {
+    budget = Math.min(budget + speed * n, 4 * speed * n + n);
+    const deadline = performance.now() + FRAME_BUDGET_MS;
+    if (algo === 'metropolis') {
+      while (budget >= 1 && performance.now() < deadline) {
+        const chunk = Math.min(budget, 2048) | 0 || 1;
+        metropolis(chunk); budget -= chunk; sweeps += chunk / n;
+      }
+    } else {
+      while (budget >= 1 && performance.now() < deadline) {
+        const size = wolff(); budget -= size; sweeps += size / n;
+      }
+    }
+  }
+
+  // ---- observables ---------------------------------------------------------
+  function measure() {
+    let sum = 0, bonds = 0;
+    for (let i = 0; i < n; i++) {
+      const c = i & MASK, r = i >> LOG2, s = spins[i];
+      sum += s;
+      bonds += s * (spins[(((r + 1) & MASK) << LOG2) | c] + spins[(r << LOG2) | ((c + 1) & MASK)]);
+    }
+    return { m: sum / n, e: (-bonds - h * sum) / n };
+  }
+  const exactM0 = (t) => (t < TC ? Math.pow(1 - Math.pow(Math.sinh(2 / t), -4), 0.125) : 0);
+
+  // ---- rendering -----------------------------------------------------------
+  const PLUS = (255 << 24) | (61 << 16) | (69 << 8) | 214;    // ABGR little-endian: #d6453d
+  const MINUS = (255 << 24) | (219 << 16) | (111 << 8) | 47;  // #2f6fdb
+  function render(mSigned) {
+    // With h = 0 and Wolff updates, whole-lattice flips are common at low T; show the
+    // configuration with its majority drawn red (Z2 symmetry) to avoid full-screen flicker.
+    const gauge = algo === 'wolff' && h === 0 && mSigned < 0 ? -1 : 1;
+    for (let i = 0; i < n; i++) pixels[i] = spins[i] * gauge > 0 ? PLUS : MINUS;
+    ctx.putImageData(image, 0, 0);
+  }
+
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function drawChart(cv, data, lo, hi, color, ref) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, hgt = cv.clientHeight;
+    if (cv.width !== w * dpr || cv.height !== hgt * dpr) { cv.width = w * dpr; cv.height = hgt * dpr; }
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, hgt);
+    const y = (v) => hgt - 4 - ((v - lo) / (hi - lo)) * (hgt - 8);
+    g.strokeStyle = css('--grid'); g.lineWidth = 1;
+    for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(0, hgt * k / 4); g.lineTo(w, hgt * k / 4); g.stroke(); }
+    if (ref !== null) {
+      g.setLineDash([5, 4]); g.strokeStyle = css('--ref');
+      g.beginPath(); g.moveTo(0, y(ref)); g.lineTo(w, y(ref)); g.stroke(); g.setLineDash([]);
+    }
+    if (data.length < 2) return;
+    g.strokeStyle = color; g.lineWidth = 1.6; g.beginPath();
+    data.forEach((v, k) => { const x = (k / (HISTORY - 1)) * w; k ? g.lineTo(x, y(v)) : g.moveTo(x, y(v)); });
+    g.stroke();
+  }
+
+  function updateCharts() {
+    const eMin = Math.min(...histE), eMax = Math.max(...histE);
+    const pad = Math.max(0.1, (eMax - eMin) * 0.15);
+    const ref = h === 0 && T < TC ? exactM0(T) : null;
+    drawChart($('chart-m'), histM, 0, 1, css('--chart-m'), ref);
+    drawChart($('chart-e'), histE, eMin - pad, eMax + pad, css('--chart-e'), null);
+  }
+
+  // ---- main loop -----------------------------------------------------------
+  let frames = 0, lastFpsTime = performance.now(), fps = 0;
+  function frame(now) {
+    if (running) {
+      advance();
+      const { m, e } = measure();
+      histM.push(Math.abs(m)); histE.push(e);
+      if (histM.length > HISTORY) { histM.shift(); histE.shift(); }
+      render(m);
+      el.mVal.textContent = Math.abs(m).toFixed(3);
+      el.eVal.textContent = e.toFixed(3);
+      updateCharts();
+    }
+    frames++;
+    if (now - lastFpsTime > 500) { fps = frames * 1000 / (now - lastFpsTime); frames = 0; lastFpsTime = now; }
+    el.stats.textContent = `sweeps: ${Math.floor(sweeps).toLocaleString()} · ${fps.toFixed(0)} fps`;
+    requestAnimationFrame(frame);
+  }
+
+  // ---- controls ------------------------------------------------------------
+  function syncOutputs() {
+    $('T-out').textContent = T.toFixed(2);
+    $('h-out').textContent = h.toFixed(2);
+    $('speed-out').textContent = speed.toFixed(1);
+    el.note.textContent = algo === 'wolff'
+      ? 'Wolff: P_add = 1 − exp(−2J/T). With h ≠ 0 the cluster flip gets an extra Metropolis test on the field energy. For h = 0 the display shows the majority spin as red. Speed counts spins visited, in units of N² per frame.'
+      : 'Metropolis: random single-spin updates, one sweep = N² attempts. At low T a random start often freezes into stripe domains; try the Wolff algorithm to see the true ordered state.';
+  }
+  el.T.addEventListener('input', () => { T = +el.T.value; syncOutputs(); });
+  el.h.addEventListener('input', () => { h = +el.h.value; syncOutputs(); });
+  el.speed.addEventListener('input', () => { speed = +el.speed.value; syncOutputs(); });
+  document.querySelectorAll('input[name=algo]').forEach((r) =>
+    r.addEventListener('change', () => { algo = r.value; syncOutputs(); }));
+  document.querySelectorAll('button[data-T]').forEach((b) =>
+    b.addEventListener('click', () => {
+      T = +b.dataset.T; h = 0; el.T.value = T; el.h.value = 0; syncOutputs();
+    }));
+  el.run.addEventListener('click', () => {
+    running = !running; el.run.textContent = running ? 'Pause' : 'Run';
+    el.run.classList.toggle('active', running);
+  });
+  $('random').addEventListener('click', randomize);
+  $('up').addEventListener('click', allUp);
+  el.size.addEventListener('change', () => setSize(+el.size.value));
+  window.addEventListener('keydown', (ev) => {
+    if (ev.code === 'Space' && ev.target === document.body) { ev.preventDefault(); el.run.click(); }
+  });
+
+  syncOutputs();
+  setSize(128);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

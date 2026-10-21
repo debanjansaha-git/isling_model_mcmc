@@ -39,6 +39,12 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
    - `src/report.py`: generates `SIMULATION_REPORT.md` and `README.md` (numbers come from the data files, so they cannot drift from results).
    - Chains start all $+1$ for $T < T_c$ and random above (random low-$T$ starts freeze into stripe domains). Metropolis critical slowing down ($\tau_{int}$ grows as $N^{z}$, $z \approx 2.17$) sets the required sweep count.
 
+5. **Cluster Updates, Replica Exchange & Web Demo**:
+   - `src/wolff_ising.py`: `WolffIsing2D(CPUIsing2D)`, single-cluster Wolff with stack-based DFS, $P_{add} = 1 - e^{-2J/T}$. For $h \neq 0$ the flip is accepted with $\min(1, e^{-2hs\vert C\vert/T})$. `cluster_update()` returns (size, $\Delta E$); `run(n)` records $\vert M \vert$ and cluster sizes. One update costs $\langle\vert C\vert\rangle/N^2$ sweeps when comparing with Metropolis.
+   - `src/compare_algorithms.py`: Metropolis (GPU, 8 chains) vs Wolff $\tau_{int}$ at $T=2.269$ for $N \in \{16, 32, 64, 128\}$ -> `data/compare_algorithms.json`, `critical_slowing_down.png`.
+   - `src/parallel_tempering.py`: `ParallelTempering` swaps whole configurations between adjacent slots with $P = \min(1, e^{(1/T_i - 1/T_{i+1})(E_i - E_{i+1})})$ (total energies); slot temperatures stay fixed. `swap_probability` is the pure acceptance function. Demo -> `data/pt_demo.json`.
+   - `docs/index.html`: single-file vanilla JS simulator for GitHub Pages (no dependencies). With $h=0$ and Wolff it draws the majority spin as red to avoid whole-lattice flicker. Verified only through a Node DOM stub (dynamics), not in a real browser.
+
 ## Tech Stack & Hardware Target
 - **Language**: Python 3.11+
 - **Environment Manager**: `uv`
@@ -56,6 +62,7 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
 - Run finite-size scaling dataset: `uv run python -m src.fss`
 - Generate FSS plots: `uv run python -m src.visualize_fss`
 - Regenerate `SIMULATION_REPORT.md` and `README.md`: `uv run python -m src.report` (needs `data/*.h5` and `BENCHMARK_REPORT.md`)
+- Wolff demo / algorithm comparison / parallel tempering: `uv run python -m src.wolff_ising`, `uv run python -m src.compare_algorithms`, `uv run python -m src.parallel_tempering`
 - Run tests: `uv run pytest`
 
 ### Code Style Guidelines
@@ -71,3 +78,4 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
 - [x] **Phase 3 (Days 8–10)**: Domain visualizer & HDF5 dataset exporter across temperature sweeps $T \in [1.0, 4.0]$.
 - [x] **Research Phase 1**: Autocorrelation analysis, jackknife error bars, Binder cumulant crossings and $\chi$ data collapse for $N \in \{32, 64, 128\}$.
 - [x] **Report consolidation**: `SIMULATION_REPORT.md` (physics, FSS, $\tau_{int}$, jackknife errors, hardware/VRAM, benchmarks) and `README.md` are generated from the saved `.h5` files and `BENCHMARK_REPORT.md` by `src/report.py`. Edit the generator, not the generated Markdown.
+- [x] **Research Phase 2**: Wolff cluster algorithm, GPU parallel tempering, `docs/index.html` interactive demo, algorithm-comparison report section.
