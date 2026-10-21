@@ -36,6 +36,7 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
    - `src/stats.py`: `compute_autocorrelation(series)` returns normalized $C(t)$ and $\tau_{int} = \tfrac12 + \sum_{t=1}^{W} C(t)$ (Sokal automatic window; white noise gives $\tfrac12$). `jackknife_resampling(series, func, n_blocks)` returns a bias-corrected estimate and error; blocks must exceed $\tau_{int}$ for correlated MCMC data.
    - `src/fss.py`: Binder cumulant $U_4 = 1 - \frac{\langle M^4 \rangle}{3 \langle M^2 \rangle^2}$ ($\to 2/3$ ordered, $\to 0$ for Gaussian/disordered $M$; universal crossing near $T_c$). Runs $N \in \{32, 64, 128\}$, $T \in [2.15, 2.40]$, step 0.005, keeping per-sweep $M$/$E$ series, and writes `data/fss_analysis.h5` (groups `N_<size>`).
    - `src/visualize_fss.py`: `binder_cumulants.png` and `fss_data_collapse.png` ($\chi N^{-\gamma/\nu}$ vs $(T-T_c)N^{1/\nu}$, $\gamma = 7/4$, $\nu = 1$).
+   - `src/report.py`: generates `SIMULATION_REPORT.md` and `README.md` (numbers come from the data files, so they cannot drift from results).
    - Chains start all $+1$ for $T < T_c$ and random above (random low-$T$ starts freeze into stripe domains). Metropolis critical slowing down ($\tau_{int}$ grows as $N^{z}$, $z \approx 2.17$) sets the required sweep count.
 
 ## Tech Stack & Hardware Target
@@ -54,6 +55,7 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
 - Run production temperature sweep (N=128): `uv run python -m src.simulate`
 - Run finite-size scaling dataset: `uv run python -m src.fss`
 - Generate FSS plots: `uv run python -m src.visualize_fss`
+- Regenerate `SIMULATION_REPORT.md` and `README.md`: `uv run python -m src.report` (needs `data/*.h5` and `BENCHMARK_REPORT.md`)
 - Run tests: `uv run pytest`
 
 ### Code Style Guidelines
@@ -67,4 +69,5 @@ A high-performance Monte Carlo Markov Chain (MCMC) simulation of the 2D Ising mo
 - [x] **Phase 1 (Days 1–3)**: CPU single-spin baseline implementation & unit testing. Validate $\vert{}M\vert{}$ drop at $T_c \approx 2.269$.
 - [x] **Phase 2 (Days 4–7)**: Vectorized PyTorch Checkerboard GPU engine. Benchmark speedup vs CPU.
 - [x] **Phase 3 (Days 8–10)**: Domain visualizer & HDF5 dataset exporter across temperature sweeps $T \in [1.0, 4.0]$.
-- [ ] **Research Phase 1**: Autocorrelation analysis, jackknife error bars, Binder cumulant crossings and $\chi$ data collapse for $N \in \{32, 64, 128\}$.
+- [x] **Research Phase 1**: Autocorrelation analysis, jackknife error bars, Binder cumulant crossings and $\chi$ data collapse for $N \in \{32, 64, 128\}$.
+- [x] **Report consolidation**: `SIMULATION_REPORT.md` (physics, FSS, $\tau_{int}$, jackknife errors, hardware/VRAM, benchmarks) and `README.md` are generated from the saved `.h5` files and `BENCHMARK_REPORT.md` by `src/report.py`. Edit the generator, not the generated Markdown.
