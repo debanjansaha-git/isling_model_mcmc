@@ -1,0 +1,12 @@
+[project]
+name = "isling-model-mcmc"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "h5py>=3.16.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.4.6",
+    "pytest>=9.1.1",
+]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
