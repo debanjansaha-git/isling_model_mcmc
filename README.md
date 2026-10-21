@@ -34,7 +34,7 @@ correctness reference and the performance baseline.
 | Workload | GPU speedup |
 |---|---|
 | Raw engine, large batches | 4,472–4,627× |
-| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,862× |
+| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,875× |
 
 The baseline is unoptimized Python; the speedup is not a comparison with tuned CPU code.
 CPU times are extrapolated from short runs.
@@ -82,38 +82,73 @@ Fitted τ ∝ N^z: Metropolis z = 1.92, Wolff z = 0.35 (per update). Single-spin
 
 ## Physics & methodology
 
-**Hamiltonian.** H(σ) = −J Σ⟨i,j⟩ σᵢσⱼ − h Σᵢ σᵢ, σᵢ ∈ {−1, +1}, J = 1, h = 0, k_B = 1,
-periodic boundaries. Onsager: T_c = 2J / ln(1 + √2) ≈ 2.269185.
+**Hamiltonian.** With $\sigma_i \in \{-1, +1\}$, $J = 1$, $h = 0$, $k_B = 1$ and periodic boundaries,
 
-**Observables** (per spin, M = Σσ / N²): χ = (N²/T)(⟨M²⟩ − ⟨|M|⟩²),
-C_v = (N²/T²)(⟨E²⟩ − ⟨E⟩²), Binder cumulant U₄ = 1 − ⟨M⁴⟩ / (3⟨M²⟩²)
-(→ 2/3 ordered, → 0 for Gaussian fluctuations).
+$$H(\sigma) = -J \sum_{\langle i, j \rangle} \sigma_i \sigma_j - h \sum_i \sigma_i$$
 
-**Checkerboard decomposition.** Sites with (i + j) mod 2 = 0 (Red) have only Black
+The exact (Onsager) critical temperature is
+
+$$T_c = \frac{2J}{k_B \ln(1 + \sqrt{2})} \approx 2.269185$$
+
+**Observables** (per spin):
+
+$$M = \frac{1}{N^2} \sum_i \sigma_i$$
+
+$$\chi = \frac{N^2}{T} \left( \langle M^2 \rangle - \langle \vert{}M\vert{} \rangle^2 \right)$$
+
+$$C_v = \frac{N^2}{T^2} \left( \langle E^2 \rangle - \langle E \rangle^2 \right)$$
+
+The Binder cumulant tends to $2/3$ when ordered and to $0$ for Gaussian fluctuations:
+
+$$U_4 = 1 - \frac{\langle M^4 \rangle}{3 \langle M^2 \rangle^2}$$
+
+**Checkerboard decomposition.** Sites with $(i + j) \bmod 2 = 0$ (Red) have only Black
 neighbors, so all Red spins can be updated simultaneously without violating detailed
-balance; then all Black spins are updated using the new Red values. A flip is accepted
-with probability min(1, e^(−ΔE/T)), ΔE = 2σ(J Σ_nn σ + h); neighbor sums use `torch.roll`.
-Each lattice carries its own temperature in a (B, 1, 1) tensor. Spins are int8.
+balance; then all Black spins are updated using the new Red values. The energy change of a
+flip and its Metropolis acceptance probability are
+
+$$\Delta E = 2 \sigma_i \left( J \sum_{\text{nn}} \sigma_j + h \right)$$
+
+$$P_{\text{acc}} = \min\left(1, e^{-\Delta E / T}\right)$$
+
+Neighbor sums use `torch.roll`. Each lattice carries its own temperature in a $(B, 1, 1)$
+tensor. Spins are int8.
 
 **Wolff cluster algorithm.** Pick a random seed spin; each aligned neighbor of a cluster
-spin joins with probability P_add = 1 − exp(−2J/T) (stack-based DFS); flip the whole
-cluster with probability 1. This satisfies detailed balance at h = 0 and avoids
-critical slowing down. For h ≠ 0 the flip is additionally accepted with
-min(1, exp(−2hs|C|/T)).
+spin joins with probability (stack-based DFS)
 
-**Parallel tempering.** Replicas at ascending temperatures T₁ < … < T_R each run
+$$P_{\text{add}} = 1 - e^{-2J / T}$$
+
+then flip the whole cluster with probability 1. This satisfies detailed balance at
+$h = 0$ and avoids critical slowing down. For $h \neq 0$ the flip is additionally accepted
+with probability $\min(1, e^{-2 h s \vert{}C\vert{} / T})$.
+
+**Parallel tempering.** Replicas at ascending temperatures $T_1 < \dots < T_R$ each run
 checkerboard sweeps; adjacent configurations are exchanged with probability
-min(1, exp((1/T_i − 1/T_{i+1})(E_i − E_{i+1}))), letting configurations trapped in
-frozen domains diffuse to high T and re-order.
 
-**Autocorrelation (Sokal window).** C(t) is the normalized autocovariance (FFT). The
-integrated time is τ_int(W) = ½ + Σ_{t=1}^{W} C(t), with the window W chosen as the
-smallest W satisfying W ≥ 6 τ_int(W). The variance of a sample mean is 2τ_int σ² / n.
+$$P_{\text{swap}} = \min\left(1, \exp\left[\left(\frac{1}{T_i} - \frac{1}{T_{i+1}}\right)(E_i - E_{i+1})\right]\right)$$
 
-**Blocked jackknife.** Split the series into n blocks, compute the statistic θ₍ᵢ₎ with
-block i removed. Bias-corrected estimate θ̂ = nθ − (n−1)θ̄₍·₎, error
-σ² = (n−1)/n Σᵢ (θ₍ᵢ₎ − θ̄₍·₎)². Blocks longer than τ_int make the error account for
-correlations; this works for non-linear statistics such as χ, C_v and U₄.
+letting configurations trapped in frozen domains diffuse to high $T$ and re-order.
+
+**Autocorrelation (Sokal window).** $C(t)$ is the normalized autocovariance (FFT). The
+integrated time is
+
+$$\tau_{\text{int}}(W) = \frac{1}{2} + \sum_{t=1}^{W} C(t)$$
+
+with the window $W$ chosen as the smallest value satisfying $W \ge 6 \tau_{\text{int}}(W)$.
+The variance of a sample mean of $n$ points with variance $\sigma^2$ is
+
+$$\sigma^2(\bar{x}) = \frac{2 \tau_{\text{int}}}{n} \sigma^2$$
+
+**Blocked jackknife.** Split the series into $n$ blocks and compute the statistic
+$\theta_{(i)}$ with block $i$ removed. The bias-corrected estimate and its variance are
+
+$$\hat{\theta} = n\theta - (n-1)\bar{\theta}_{(\cdot)}$$
+
+$$\sigma^2 = \frac{n-1}{n} \sum_{i=1}^n (\theta_{(i)} - \bar{\theta}_{(\cdot)})^2$$
+
+Blocks longer than $\tau_{\text{int}}$ make the error account for correlations; this works
+for non-linear statistics such as $\chi$, $C_v$ and $U_4$.
 
 ## Quickstart
 

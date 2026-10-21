@@ -32,7 +32,11 @@ Dataset: N ∈ {32, 64, 128}, T ∈ [2.150, 2.400] in steps of 0.005 (51 tempera
 
 ### Binder cumulants U₄
 
-U₄ = 1 − ⟨M⁴⟩ / (3⟨M²⟩²) tends to 2/3 in the ordered phase and to 0 for Gaussian (disordered) fluctuations. Curves for different N intersect near T_c because U₄ is a universal function of (T − T_c)N^{1/ν} up to corrections to scaling.
+The Binder cumulant
+
+$$U_4 = 1 - \frac{\langle M^4 \rangle}{3 \langle M^2 \rangle^2}$$
+
+tends to $2/3$ in the ordered phase and to $0$ for Gaussian (disordered) fluctuations. Curves for different $N$ intersect near $T_c$ because $U_4$ is a universal function of $(T - T_c) N^{1/\nu}$ up to corrections to scaling.
 
 | Pair | Crossing T | Offset from Onsager T_c |
 |---|---|---|
@@ -45,7 +49,7 @@ Onsager T_c = 2.2692. Both crossings lie at or slightly below T_c, spanning 2.25
 
 ### Critical slowing down
 
-Integrated autocorrelation time τ_int of |M| (Sokal automatic window, W ≥ 6 τ_int(W)), in sweeps:
+Integrated autocorrelation time $\tau_{\text{int}}$ of $\vert M \vert$ (Sokal automatic window, $W \ge 6 \tau_{\text{int}}(W)$), in sweeps:
 
 | N | τ_int at T=2.27 | max over T scan (at T) |
 |---|---|---|
@@ -71,7 +75,7 @@ Errors grow with N at fixed sweep count because τ_int grows faster than the num
 
 ### Universal data collapse
 
-Rescaling χ → χ N^(−γ/ν) and T → (T − T_c) N^(1/ν) with the exact 2D Ising exponents γ = 1.75, ν = 1.0 and the exact T_c collapses all sizes onto one curve:
+Rescaling $\chi \to \chi N^{-\gamma/\nu}$ and $T \to (T - T_c) N^{1/\nu}$ with the exact 2D Ising exponents $\gamma$ = 1.75, $\nu$ = 1.0 and the exact T_c collapses all sizes onto one curve:
 
 ![Susceptibility collapse](docs/images/fss_data_collapse.png)
 
@@ -142,9 +146,9 @@ Hardware: NVIDIA GeForce RTX 2060 SUPER (8 GB, compute capability 7.5), torch wi
 | GPU wall time (incl. per-sweep measurements) | 33.8 s |
 | Throughput during production run | 9.512e+08 spin-updates/s |
 | Peak raw engine throughput (benchmark, large batch) | 1.29e+09 spin-updates/s |
-| CPU baseline, one 128×128 sweep (measured) | 49 ms |
-| CPU estimate for the production workload (extrapolated) | 26.9 h |
-| Speedup on the production workload | ≈ 2,862× |
+| CPU baseline, one 128×128 sweep (measured) | 50 ms |
+| CPU estimate for the production workload (extrapolated) | 27.0 h |
+| Speedup on the production workload | ≈ 2,875× |
 | Speedup, raw engine throughput (best-case batches) | 4,472–4,627× |
 
 The production run is slower than the raw engine rate because it measures M and E after every sweep (extra kernels per sweep). Speedups compare against the pure-Python CPU baseline and are extrapolated from short CPU timings; they do not compare against an optimized (e.g. C/numba, multispin-coded) CPU implementation.
