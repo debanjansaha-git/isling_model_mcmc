@@ -18,9 +18,9 @@ Metropolis Markov chain Monte Carlo for the 2D Ising model on an NVIDIA RTX 2060
 A checkerboard (Red/Black) decomposition updates half the lattice in parallel with
 PyTorch tensor operations, running hundreds to thousands of independent lattices, each
 at its own temperature, in one batch. The study goes beyond a phase-transition sweep:
-Binder cumulants locate T_c from finite-size crossings, integrated autocorrelation times
+Binder cumulants locate $T_c$ from finite-size crossings, integrated autocorrelation times
 quantify critical slowing down, and blocked-jackknife resampling gives error bars on the
-non-linear observables χ, C_v and U₄. A sequential CPU implementation serves as the
+non-linear observables $\chi$, $C_v$ and $U_4$. A sequential CPU implementation serves as the
 correctness reference and the performance baseline.
 
 ## Key results at a glance
@@ -34,37 +34,37 @@ correctness reference and the performance baseline.
 | Workload | GPU speedup |
 |---|---|
 | Raw engine, large batches | 4,472–4,627× |
-| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,875× |
+| Full production run (13,000 sweeps × 151 lattices, with per-sweep measurement) | ≈ 2,856× |
 
 The baseline is unoptimized Python; the speedup is not a comparison with tuned CPU code.
 CPU times are extrapolated from short runs.
 
-**Physics** (N = 128 sweep, T step 0.02; FSS, N ∈ {32, 64, 128}):
+**Physics** ($N = 128$ sweep, $\Delta T = 0.02$; finite-size scaling, $N \in \{32, 64, 128\}$):
 
 | Observable | Estimate | Exact (Onsager) |
 |---|---|---|
-| χ peak position | T = 2.28 | T_c = 2.2692 |
-| C_v peak position | T = 2.26 | T_c = 2.2692 |
-| Binder-cumulant crossings | N=32/64: 2.268, N=64/128: 2.257 | T_c = 2.2692 |
-| Autocorrelation exponent z (τ ∝ N^z) | 2.18 | ≈ 2.17 (Metropolis, literature) |
-| χ_max N^(−7/4), N = 32/64/128 | 0.048 / 0.050 / 0.050 | constant (scaling) |
+| $\chi$ peak position | $T = 2.28$ | $T_c = 2.2692$ |
+| $C_v$ peak position | $T = 2.26$ | $T_c = 2.2692$ |
+| Binder cumulant ($U_4$) crossings | $N = 32/64$: $T = 2.268$, $N = 64/128$: $T = 2.257$ | $T_c = 2.2692$ |
+| Dynamic critical exponent $z$ ($\tau \propto N^z$) | 2.18 | ≈ 2.17 (Metropolis, literature) |
+| $\chi_{\max} N^{-7/4}$, $N = 32/64/128$ | 0.048 / 0.050 / 0.050 | constant (scaling) |
 
-Critical slowing down: τ_int(|M|) at T = 2.27 grows from 39
-to 802 sweeps between N = 32 and N = 128
-(scan maximum: 53 → 2,380).
+Critical slowing down: $\tau_{\text{int}}(\vert M \vert)$ at $T = 2.27$ grows from 39
+to 802 sweeps between $N = 32$ and $N = 128$
+(scan maximum: $\tau_{\max}$ ≈ 53 → $\tau_{\max}$ ≈ 2,380).
 
-**Metropolis vs Wolff** — integrated autocorrelation time of |M| at T = 2.269 (Wolff converted to sweep-equivalents; one update costs ⟨|C|⟩/N² sweeps):
+**Metropolis vs Wolff** — integrated autocorrelation time of $\vert M \vert$ at $T = 2.269$ (Wolff converted to sweep-equivalents; one update costs $\langle \vert C \vert \rangle / N^2$ sweeps):
 
-| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | Wolff τ_int (sweep-equiv.) |
+| $N$ | Metropolis $\tau_{\text{int}}$ (sweeps) | Wolff $\tau_{\text{int}}$ (updates) | Wolff $\tau_{\text{int}}$ (sweep-equiv.) |
 |---|---|---|---|
 | 16 | 11 | 2.38 | 1.29 |
 | 32 | 44 | 3.39 | 1.57 |
 | 64 | 203 | 3.81 | 1.45 |
 | 128 | 536 | 5.19 | 1.68 |
 
-Fitted τ ∝ N^z: Metropolis z = 1.92, Wolff z = 0.35 (per update). Single-spin Metropolis slows down near T_c; cluster updates largely remove the effect.
+Fitted $\tau \propto N^z$: Metropolis $z = 1.92$, Wolff $z = 0.35$ (per update). Single-spin Metropolis slows down near $T_c$; cluster updates largely remove the effect.
 
-**Parallel tempering** (151 GPU replicas, T ∈ [1, 4], random starts): ⟨|M|⟩ at T = 1 is 0.9993, while 0% of plain Metropolis chains from random starts stay below |M| = 0.9 at this lattice size (stripe traps are size- and seed-dependent).
+**Parallel tempering** (151 GPU replicas, $T \in [1, 4]$, random starts): $\langle \vert M \vert \rangle$ at $T = 1$ is 0.9993, while 0% of plain Metropolis chains from random starts stay below $\vert M \vert = 0.9$ at this lattice size (stripe traps are size- and seed-dependent).
 
 ## Visualizations
 

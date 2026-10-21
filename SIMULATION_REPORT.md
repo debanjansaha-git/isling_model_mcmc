@@ -2,21 +2,21 @@
 
 ## Setup
 
-- Square lattice, periodic boundaries, J = 1, h = 0, k_B = 1; Metropolis dynamics with Red/Black checkerboard decomposition (GPU) or sequential single-spin (CPU)
-- Production sweep: 128×128, 151 temperatures T ∈ [1.00, 4.00], step 0.02, all chains in one GPU batch; 3,000 thermalization + 10,000 measurement sweeps, observables sampled every sweep
-- Initial state: all +1 for T < T_c, random for T ≥ T_c (a random start at low T freezes into striped domains and never reaches the ordered equilibrium)
+- Square lattice, periodic boundaries, $J = 1$, $h = 0$, $k_B = 1$; Metropolis dynamics with Red/Black checkerboard decomposition (GPU) or sequential single-spin (CPU)
+- Production sweep: 128×128, 151 temperatures $T \in [1.00, 4.00]$, step 0.02, all chains in one GPU batch; 3,000 thermalization + 10,000 measurement sweeps, observables sampled every sweep
+- Initial state: all +1 for $T < T_c$, random for $T \ge T_c$ (a random start at low T freezes into striped domains and never reaches the ordered equilibrium)
 - Seed 0; GPU: NVIDIA GeForce RTX 2060 SUPER
 
-## Physical results (N=128 temperature sweep)
+## Physical results ($N = 128$ temperature sweep)
 
-| Quantity | Estimated T_peak | Onsager T_c | Offset |
+| Quantity | Estimated $T_{\text{peak}}$ | Onsager $T_c$ | Offset |
 |---|---|---|---|
-| Susceptibility χ | 2.28 | 2.2692 | +0.011 |
-| Specific heat C_v | 2.26 | 2.2692 | -0.009 |
+| Susceptibility $\chi$ | 2.28 | 2.2692 | +0.011 |
+| Specific heat $C_v$ | 2.26 | 2.2692 | -0.009 |
 
-Peak positions are grid maxima (resolution 0.02) from a single run. Peak heights: χ_max = 182.7, C_v,max = 2.15. Finite-size effects shift pseudo-critical points slightly from the infinite-system T_c and autocorrelation times near T_c are long (see below), so offsets of a grid step or two are expected.
+Peak positions are grid maxima (resolution 0.02) from a single run. Peak heights: $\chi_{\max}$ = 182.7, $C_{v,\max}$ = 2.15. Finite-size effects shift pseudo-critical points slightly from the infinite-system $T_c$ and autocorrelation times near $T_c$ are long (see below), so offsets of a grid step or two are expected.
 
-| T | ⟨\|M\|⟩ | ⟨E⟩ |
+| $T$ | $\langle \vert M \vert \rangle$ | $\langle E \rangle$ |
 |---|---|---|
 | 1.2 | 0.9970 | -1.9886 |
 | 2.26 | 0.6403 | -1.4433 |
@@ -28,9 +28,9 @@ Peak positions are grid maxima (resolution 0.02) from a single run. Peak heights
 
 ## Finite-size scaling and error analysis
 
-Dataset: N ∈ {32, 64, 128}, T ∈ [2.150, 2.400] in steps of 0.005 (51 temperatures), 10,000 thermalization + 100,000 measurement sweeps per lattice, observables sampled after every sweep. Errors are blocked-jackknife with 50 blocks of 2,000 sweeps.
+Dataset: $N \in \{32, 64, 128\}$, $T \in [2.150, 2.400]$ in steps of 0.005 (51 temperatures), 10,000 thermalization + 100,000 measurement sweeps per lattice, observables sampled after every sweep. Errors are blocked-jackknife with 50 blocks of 2,000 sweeps.
 
-### Binder cumulants U₄
+### Binder cumulants $U_4$
 
 The Binder cumulant
 
@@ -38,12 +38,12 @@ $$U_4 = 1 - \frac{\langle M^4 \rangle}{3 \langle M^2 \rangle^2}$$
 
 tends to $2/3$ in the ordered phase and to $0$ for Gaussian (disordered) fluctuations. Curves for different $N$ intersect near $T_c$ because $U_4$ is a universal function of $(T - T_c) N^{1/\nu}$ up to corrections to scaling.
 
-| Pair | Crossing T | Offset from Onsager T_c |
+| Pair | Crossing T | Offset from Onsager $T_c$ |
 |---|---|---|
-| N=32 / N=64 | 2.2684 | -0.0008 |
-| N=64 / N=128 | 2.2567 | -0.0125 |
+| $N = 32$ / $N = 64$ | 2.2684 | -0.0008 |
+| $N = 64$ / $N = 128$ | 2.2567 | -0.0125 |
 
-Onsager T_c = 2.2692. Both crossings lie at or slightly below T_c, spanning 2.257–2.268. The larger-N pair is noisier: near T_c the N=128 chains contain only a few dozen independent samples (see below), and the crossing is a linear interpolation between 0.005-spaced points whose U₄ error bars overlap. Scatter of this size (≈ 0.01 in T) is therefore expected and no systematic shift is claimed.
+Onsager $T_c = 2.2692$. Both crossings lie at or slightly below $T_c$, spanning 2.257–2.268. The larger-N pair is noisier: near $T_c$ the $N = 128$ chains contain only a few dozen independent samples (see below), and the crossing is a linear interpolation between 0.005-spaced points whose $U_4$ error bars overlap. Scatter of this size (≈ 0.01 in T) is therefore expected and no systematic shift is claimed.
 
 ![Binder cumulants](docs/images/binder_cumulants.png)
 
@@ -51,54 +51,54 @@ Onsager T_c = 2.2692. Both crossings lie at or slightly below T_c, spanning 2.25
 
 Integrated autocorrelation time $\tau_{\text{int}}$ of $\vert M \vert$ (Sokal automatic window, $W \ge 6 \tau_{\text{int}}(W)$), in sweeps:
 
-| N | τ_int at T=2.27 | max over T scan (at T) |
+| $N$ | $\tau_{\text{int}}$ at $T = 2.27$ | max over T scan (at T) |
 |---|---|---|
-| 32 | 39 | 53 (T=2.195) |
-| 64 | 173 | 299 (T=2.265) |
-| 128 | 802 | 2,380 (T=2.260) |
+| 32 | 39 | 53 ($T = 2.195$) |
+| 64 | 173 | 299 ($T = 2.265$) |
+| 128 | 802 | 2,380 ($T = 2.260$) |
 
-The maximum grows from 53 sweeps (N=32) to 2,380 sweeps (N=128). Fitting τ ∝ N^z gives z = 2.18 using τ at T=2.27 (literature value for single-spin Metropolis ≈ 2.17) and z = 2.75 using the scan maximum. The maximum is a noisy statistic (it picks the largest of 51 estimates at each N), so the fixed-temperature fit is the better estimate of z.
+The maximum grows from 53 sweeps ($N = 32$) to 2,380 sweeps ($N = 128$). Fitting $\tau \propto N^z$ gives $z = 2.18$ using $\tau$ at $T = 2.27$ (literature value for single-spin Metropolis ≈ 2.17) and $z = 2.75$ using the scan maximum. The maximum is a noisy statistic (it picks the largest of 51 estimates at each N), so the fixed-temperature fit is the better estimate of $z$.
 
-Why local updates degrade: single-spin Metropolis moves one spin at a time, so the correlated clusters of size ξ ~ N that appear at T_c relax only by diffusing their boundaries. The relaxation time therefore scales as ξ^z with z ≈ 2.17, i.e. a 4.5× cost for each doubling of N, on top of the 4× cost of the larger lattice. Cluster algorithms (Wolff, Swendsen–Wang) have z ≈ 0.25 and would remove most of this penalty; they are not implemented here.
+Why local updates degrade: single-spin Metropolis moves one spin at a time, so the correlated clusters of size $\xi \sim N$ that appear at $T_c$ relax only by diffusing their boundaries. The relaxation time therefore scales as $\xi^z$ with $z \approx 2.17$, i.e. a 4.5× cost for each doubling of N, on top of the 4× cost of the larger lattice. Cluster algorithms (Wolff, Swendsen–Wang) have $z \approx 0.25$ and would remove most of this penalty; they are not implemented here.
 
 ### Statistical errors (blocked jackknife)
 
-Values at T=2.27 (nearest grid point to T_c), mean ± jackknife error:
+Values at $T = 2.27$ (nearest grid point to $T_c$), mean ± jackknife error:
 
-| N | U₄ | χ | C_v | n_eff ≈ meas / (2 τ_int) |
+| $N$ | $U_4$ | $\chi$ | $C_v$ | n_eff ≈ meas / (2 $\tau_{\text{int}}$) |
 |---|---|---|---|---|
 | 32 | 0.6135 ± 0.0031 | 13.1 ± 0.8 | 1.810 ± 0.030 | 1288 |
 | 64 | 0.6123 ± 0.0063 | 44.4 ± 5.6 | 2.146 ± 0.057 | 288 |
 | 128 | 0.6044 ± 0.0122 | 182.0 ± 34.7 | 2.603 ± 0.108 | 62 |
 
-Errors grow with N at fixed sweep count because τ_int grows faster than the number of samples. Caveat: the jackknife block length is 2,000 sweeps, which exceeds τ_int at T_c for all sizes (N=128: 802) but is shorter than the N=128 scan maximum (2,380); error bars for N=128 in the immediate vicinity of the τ_int peak may be underestimated.
+Errors grow with N at fixed sweep count because $\tau_{\text{int}}$ grows faster than the number of samples. Caveat: the jackknife block length is 2,000 sweeps, which exceeds $\tau_{\text{int}}$ at $T_c$ for all sizes ($N = 128$: 802) but is shorter than the $N = 128$ scan maximum (2,380); error bars for $N = 128$ in the immediate vicinity of the $\tau_{\text{int}}$ peak may be underestimated.
 
 ### Universal data collapse
 
-Rescaling $\chi \to \chi N^{-\gamma/\nu}$ and $T \to (T - T_c) N^{1/\nu}$ with the exact 2D Ising exponents $\gamma$ = 1.75, $\nu$ = 1.0 and the exact T_c collapses all sizes onto one curve:
+Rescaling $\chi \to \chi N^{-\gamma/\nu}$ and $T \to (T - T_c) N^{1/\nu}$ with the exact 2D Ising exponents $\gamma$ = 1.75, $\nu$ = 1.0 and the exact $T_c$ collapses all sizes onto one curve:
 
 ![Susceptibility collapse](docs/images/fss_data_collapse.png)
 
-| N | χ_max N^(−γ/ν) | T at χ_max |
+| $N$ | $\chi_{\max} N^{-\gamma/\nu}$ | T at $\chi_{\max}$ |
 |---|---|---|
 | 32 | 0.0479 | 2.335 |
 | 64 | 0.0502 | 2.300 |
 | 128 | 0.0502 | 2.290 |
 
-The scaled peak height is constant to within a few percent across sizes (N=32 is slightly lower, as expected from corrections to scaling). The collapse is a visual and peak-height check, not a fitted exponent estimate.
+The scaled peak height is constant to within a few percent across sizes ($N = 32$ is slightly lower, as expected from corrections to scaling). The collapse is a visual and peak-height check, not a fitted exponent estimate.
 
 ## Algorithm comparison: Metropolis vs Wolff cluster updates
 
-Integrated autocorrelation time of |M| at T = 2.269 (≈ T_c), Sokal window. Metropolis: 8 independent GPU chains per size, mean ± standard error, in sweeps. Wolff: one CPU chain of 20,000 cluster updates, in cluster updates. One Wolff update visits ⟨|C|⟩ spins, so it costs ⟨|C|⟩/N² of a sweep; the sweep-equivalent column converts to that unit.
+Integrated autocorrelation time of $\vert M \vert$ at $T = 2.269$ (≈ $T_c$), Sokal window. Metropolis: 8 independent GPU chains per size, mean ± standard error, in sweeps. Wolff: one CPU chain of 20,000 cluster updates, in cluster updates. One Wolff update visits $\langle \vert C \vert \rangle$ spins, so it costs $\langle \vert C \vert \rangle / N^2$ of a sweep; the sweep-equivalent column converts to that unit.
 
-| N | Metropolis τ_int (sweeps) | Wolff τ_int (updates) | ⟨\|C\|⟩/N² | Wolff τ_int (sweep-equiv.) | Metropolis / Wolff |
+| $N$ | Metropolis $\tau_{\text{int}}$ (sweeps) | Wolff $\tau_{\text{int}}$ (updates) | $\langle \vert C \vert \rangle / N^2$ | Wolff $\tau_{\text{int}}$ (sweep-equiv.) | Metropolis / Wolff |
 |---|---|---|---|---|---|
 | 16 | 11 ± 0 | 2.38 | 0.54 | 1.29 | 8× |
 | 32 | 44 ± 3 | 3.39 | 0.46 | 1.57 | 28× |
 | 64 | 203 ± 14 | 3.81 | 0.38 | 1.45 | 140× |
 | 128 | 536 ± 57 | 5.19 | 0.32 | 1.68 | 320× |
 
-Fitted exponents τ ∝ N^z: Metropolis z = 1.92; Wolff z = 0.35 in cluster updates (0.10 in sweep-equivalents, where the growing cluster fraction is included). At N = 128 the Wolff chain decorrelates in 5.2 updates against 536 Metropolis sweeps.
+Fitted exponents $\tau \propto N^z$: Metropolis $z = 1.92$; Wolff $z = 0.35$ in cluster updates (0.10 in sweep-equivalents, where the growing cluster fraction is included). At $N = 128$ the Wolff chain decorrelates in 5.2 updates against 536 Metropolis sweeps.
 
 ![Critical slowing down](docs/images/critical_slowing_down.png)
 
@@ -106,16 +106,16 @@ Caveats: the comparison is in spin visits, not wall-clock time (Metropolis runs 
 
 ## Parallel tempering
 
-151 replicas of a 32×32 lattice, geometric temperature ladder T ∈ [1.0, 4.0], random initial configurations, 10,000 + 5,000 sweeps with a swap proposal (alternating even/odd pairs) after every sweep. Control: 151 independent Metropolis chains at T = 1 from random starts with the same sweep count and no swaps.
+151 replicas of a 32×32 lattice, geometric temperature ladder $T \in [1.0, 4.0]$, random initial configurations, 10,000 + 5,000 sweeps with a swap proposal (alternating even/odd pairs) after every sweep. Control: 151 independent Metropolis chains at $T = 1$ from random starts with the same sweep count and no swaps.
 
-| Method | ⟨\|M\|⟩ at T = 1 | Notes |
+| Method | $\langle \vert M \vert \rangle$ at $T = 1$ | Notes |
 |---|---|---|
-| Parallel tempering | 0.9993 | ⟨E⟩ = -1.9972; swap acceptance mean 0.90, min 0.76 |
-| Plain Metropolis, random start | 0.9994 | 0% of chains stuck below |M| = 0.9 |
+| Parallel tempering | 0.9993 | $\langle E \rangle = -1.9972$; swap acceptance mean 0.90, min 0.76 |
+| Plain Metropolis, random start | 0.9994 | 0% of chains stuck below $\vert M \vert = 0.9$ |
 
-Swap acceptance between adjacent slots (T_i, T_i+1), sampled across the ladder:
+Swap acceptance between adjacent slots ($T_i$, $T_{i+1}$), sampled across the ladder:
 
-| T_i | acceptance |
+| $T_i$ | acceptance |
 |---|---|
 | 1.000 | 0.98 |
 | 1.097 | 0.96 |
@@ -133,7 +133,7 @@ Swap acceptance between adjacent slots (T_i, T_i+1), sampled across the ladder:
 | 3.325 | 0.92 |
 | 3.647 | 0.93 |
 
-Minimum over all 150 pairs: 0.76; the dip near T_c is where the energy distributions of neighbours overlap least.
+Minimum over all 150 pairs: 0.76; the dip near $T_c$ is where the energy distributions of neighbours overlap least.
 
 ## Hardware & execution summary
 
@@ -146,16 +146,16 @@ Hardware: NVIDIA GeForce RTX 2060 SUPER (8 GB, compute capability 7.5), torch wi
 | GPU wall time (incl. per-sweep measurements) | 33.8 s |
 | Throughput during production run | 9.512e+08 spin-updates/s |
 | Peak raw engine throughput (benchmark, large batch) | 1.29e+09 spin-updates/s |
-| CPU baseline, one 128×128 sweep (measured) | 50 ms |
-| CPU estimate for the production workload (extrapolated) | 27.0 h |
-| Speedup on the production workload | ≈ 2,875× |
+| CPU baseline, one 128×128 sweep (measured) | 49 ms |
+| CPU estimate for the production workload (extrapolated) | 26.8 h |
+| Speedup on the production workload | ≈ 2,856× |
 | Speedup, raw engine throughput (best-case batches) | 4,472–4,627× |
 
 The production run is slower than the raw engine rate because it measures M and E after every sweep (extra kernels per sweep). Speedups compare against the pure-Python CPU baseline and are extrapolated from short CPU timings; they do not compare against an optimized (e.g. C/numba, multispin-coded) CPU implementation.
 
 ### VRAM usage (peak torch allocation, one sweep)
 
-| Workload | N | B | int8 lattices | Peak VRAM |
+| Workload | $N$ | B | int8 lattices | Peak VRAM |
 |---|---|---|---|---|
 | FSS run (one size) | 128 | 51 | 0.8 MiB | 14 MiB |
 | Production sweep | 128 | 151 | 2.4 MiB | 43 MiB |
@@ -170,7 +170,7 @@ From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see that file
 
 ### CPU vs GPU: 1000 sweeps, single lattice (B=1)
 
-| N | CPU time | GPU time | Speedup | CPU flips/s | GPU flips/s |
+| $N$ | CPU time | GPU time | Speedup | CPU flips/s | GPU flips/s |
 |---|---|---|---|---|---|
 | 32 | 3.67 s * | 0.48 s | 7.6x | 2.79e+05 | 2.12e+06 |
 | 64 | 14.31 s * | 0.48 s | 29.9x | 2.86e+05 | 8.55e+06 |
@@ -182,7 +182,7 @@ From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see that file
 
 ### CPU vs GPU: best-case throughput (largest feasible batch)
 
-| N | Best B | GPU flips/s | CPU flips/s | Speedup |
+| $N$ | Best B | GPU flips/s | CPU flips/s | Speedup |
 |---|---|---|---|---|
 | 32 | 10000 | 1.29e+09 | 2.79e+05 | 4,627x |
 | 64 | 10000 | 1.29e+09 | 2.86e+05 | 4,507x |
@@ -194,6 +194,6 @@ From `BENCHMARK_REPORT.md` (CPU entries marked * are extrapolated; see that file
 ## Limitations
 
 - Single seed per dataset; peak locations are grid maxima without error bars.
-- Local updates suffer critical slowing down; N=128 near T_c has few independent samples and the jackknife may be optimistic there (see above).
+- Local updates suffer critical slowing down; $N = 128$ near $T_c$ has few independent samples and the jackknife may be optimistic there (see above).
 - The data collapse uses the exact exponents rather than fitting them.
-- χ is defined with ⟨|M|⟩² (the standard finite-size convention for h = 0).
+- $\chi$ is defined with $\langle \vert M \vert \rangle^2$ (the standard finite-size convention for h = 0).

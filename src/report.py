@@ -244,6 +244,74 @@ def _algorithm_markdown(cmp: dict | None, pt: dict | None) -> list[str]:
     return L
 
 
+_NUM = r"-?\d[\d,]*(?:\.\d+)?"
+_TEX_RULES: list[tuple[str, object]] = [
+    (r"Autocorrelation exponent z \(τ ∝ N\^z\)", r"Dynamic critical exponent $z$ ($\\tau \\propto N^z$)"),
+    (r"τ_int\((?:\\\||\|)M(?:\\\||\|)\)", r"$\\tau_{\\text{int}}(\\vert M \\vert)$"),
+    (r"τ_int", r"$\\tau_{\\text{int}}$"),
+    (r"τ(?= at)", r"$\\tau$"),
+    (r"τ ∝ N\^z", r"$\\tau \\propto N^z$"),
+    (r"χ_max N\^\(−7/4\)", r"$\\chi_{\\max} N^{-7/4}$"),
+    (r"χ_max N\^\(−γ/ν\)", r"$\\chi_{\\max} N^{-\\gamma/\\nu}$"),
+    (r"χ_max", r"$\\chi_{\\max}$"),
+    (r"C_v,max", r"$C_{v,\\max}$"),
+    (r"τ_max", r"$\\tau_{\\max}$"),
+    (r"T_peak", r"$T_{\\text{peak}}$"),
+    (r"T_i\+1", r"$T_{i+1}$"),
+    (r"Binder-cumulant crossings", r"Binder cumulant ($U_4$) crossings"),
+    (r"T step 0\.02; FSS, N ∈ \{([^}]*)\}", r"$\\Delta T = 0.02$; finite-size scaling, $N \\in \\{\1\\}$"),
+    (r"\bN ∈ \{([^}]*)\}", r"$N \\in \\{\1\\}$"),
+    (r"\bT ([<≥]) T_c", lambda m: "$T " + ("<" if m.group(1) == "<" else r"\ge") + " T_c$"),
+    (r"ξ\^z", r"$\\xi^z$"),
+    (r"ξ ~ N", r"$\\xi \\sim N$"),
+    (r"⟨(?:\\\||\|)C(?:\\\||\|)⟩/N²", r"$\\langle \\vert C \\vert \\rangle / N^2$"),
+    (r"⟨(?:\\\||\|)M(?:\\\||\|)⟩²", r"$\\langle \\vert M \\vert \\rangle^2$"),
+    (r"(?:\\\||\|)M(?:\\\||\|) = (" + _NUM + ")", r"$\\vert M \\vert = \1$"),
+    (r"⟨E⟩ = (" + _NUM + ")", r"$\\langle E \\rangle = \1$"),
+    (r"\bz\b(?= \(|\.|$)", r"$z$"),
+    (r"T_c = (" + _NUM + ")", r"$T_c = \1$"),
+    (r"T_c", r"$T_c$"),
+    (r"T_i", r"$T_i$"),
+    (r"C_v", r"$C_v$"),
+    (r"U₄", r"$U_4$"),
+    (r"⟨(?:\\\||\|)C(?:\\\||\|)⟩", r"$\\langle \\vert C \\vert \\rangle$"),
+    (r"⟨(?:\\\||\|)M(?:\\\||\|)⟩", r"$\\langle \\vert M \\vert \\rangle$"),
+    (r"⟨E⟩", r"$\\langle E \\rangle$"),
+    (r"(?:\\\||\|)M(?:\\\||\|)", r"$\\vert M \\vert$"),
+    (r"χ", r"$\\chi$"),
+    (r"ξ", r"$\\xi$"),
+    (r"\bT ∈ \[([^\]]*)\]", r"$T \\in [\1]$"),
+    (r"\bT ([<>]) ", r"$T \1$ "),
+    (r"\bT ≥ ", r"$T \\ge$ "),
+    (r"\bT ?= ?(" + _NUM + ")", r"$T = \1$"),
+    (r"\bN ?= ?(\d+(?:/\d+)*)", r"$N = \1$"),
+    (r"\bz ?= ?(" + _NUM + ")", r"$z = \1$"),
+    (r"\bz ≈ (" + _NUM + ")", r"$z \\approx \1$"),
+    (r"\bJ = 1, h = 0, k_B = 1", r"$J = 1$, $h = 0$, $k_B = 1$"),
+    (r"(?<=\| )([NT])(?= \|)", r"$\1$"),
+]
+_MATH_OR_CODE = re.compile(r"(\$\$.*?\$\$|\$[^$\n]*\$|`[^`\n]*`)")
+
+
+def latexify(md: str) -> str:
+    """Wrap bare physics notation in GitHub math delimiters, leaving code, HTML,
+    images and existing math untouched."""
+    out, fenced = [], False
+    for line in md.split("\n"):
+        if line.startswith("```"):
+            fenced = not fenced
+        if fenced or line.startswith(("```", "<", "![", "$$")) or line.strip() == "":
+            out.append(line)
+            continue
+        for pat, rep in _TEX_RULES:
+            parts = _MATH_OR_CODE.split(line)
+            parts[::2] = [re.sub(pat, rep, seg) for seg in parts[::2]]
+            line = "".join(parts)
+        out.append(line)
+    return "\n".join(out)
+
+
+
 def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -> None:
     data = data or load_simulation_hdf5(SWEEP_PATH)
     fss = load_fss_hdf5(FSS_PATH)
@@ -347,7 +415,7 @@ def write_report(data: dict | None = None, path: str = "SIMULATION_REPORT.md") -
           "- The data collapse uses the exact exponents rather than fitting them.",
           "- χ is defined with ⟨|M|⟩² (the standard finite-size convention for h = 0).",
           ""]
-    Path(path).write_text("\n".join(L))
+    Path(path).write_text(latexify("\n".join(L)))
 
 
 def write_readme(data: dict | None = None, path: str = "README.md") -> None:
@@ -362,7 +430,7 @@ def write_readme(data: dict | None = None, path: str = "README.md") -> None:
     speedup = cpu_total / md["runtime_s"]
     t_chi, t_cv = float(T[np.argmax(chi)]), float(T[np.argmax(cv)])
     xs = [c for c in s["crossings"] if c[2] is not None]
-    xs_txt = ", ".join(f"N={a}/{b}: {Tx:.3f}" for a, b, Tx in xs)
+    xs_txt = ", ".join(f"N={a}/{b}: T = {Tx:.3f}" for a, b, Tx in xs)
 
     gpu_rate = (f"{best['gpu_flips']:.1e}" if best else f"{md['spin_updates_per_s']:.1e}")
     speed_rows = []
@@ -446,7 +514,7 @@ CPU times are extrapolated from short runs.
 
 Critical slowing down: τ_int(|M|) at T = {s['T_eval']:.2f} grows from {s['tau_c'][0]:,.0f}
 to {s['tau_c'][-1]:,.0f} sweeps between N = {s['sizes'][0]} and N = {s['sizes'][-1]}
-(scan maximum: {s['tau_max'][0]:,.0f} → {s['tau_max'][-1]:,.0f}).
+(scan maximum: τ_max ≈ {s['tau_max'][0]:,.0f} → τ_max ≈ {s['tau_max'][-1]:,.0f}).
 
 {algo_md}
 {pt_md}
@@ -577,7 +645,7 @@ uv run python -m src.report                # regenerate SIMULATION_REPORT.md and
 Full details, tables and caveats: [SIMULATION_REPORT.md](SIMULATION_REPORT.md),
 [BENCHMARK_REPORT.md](BENCHMARK_REPORT.md).
 """
-    Path(path).write_text(R)
+    Path(path).write_text(latexify(R))
 
 
 def main() -> None:
