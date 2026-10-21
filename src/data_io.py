@@ -39,3 +39,33 @@ def load_simulation_hdf5(filepath: str | Path) -> dict[str, Any]:
         scalars = {k: d[()] for k, d in f["scalars"].items()}
         snapshots = f["snapshots"][()]
     return {"metadata": metadata, "scalars": scalars, "snapshots": snapshots}
+
+
+def save_fss_hdf5(
+    filepath: str | Path,
+    metadata: dict[str, Any],
+    results: dict[int, dict[str, np.ndarray]],
+) -> None:
+    """Write per-lattice-size result arrays (float32) to groups 'N_<size>'."""
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    with h5py.File(filepath, "w") as f:
+        for N, arrays in results.items():
+            grp = f.create_group(f"N_{N}")
+            for key, val in arrays.items():
+                grp.create_dataset(key, data=np.asarray(val, dtype=np.float32))
+        for key, val in metadata.items():
+            f.attrs[key] = val
+
+
+def load_fss_hdf5(filepath: str | Path) -> dict[str, Any]:
+    """Return {'metadata': dict, 'results': {N: {name: array}}}."""
+    with h5py.File(filepath, "r") as f:
+        metadata = {
+            k: v.item() if isinstance(v, np.generic) else v for k, v in f.attrs.items()
+        }
+        results = {
+            int(name.split("_")[1]): {k: d[()] for k, d in grp.items()}
+            for name, grp in f.items()
+        }
+    return {"metadata": metadata, "results": results}
